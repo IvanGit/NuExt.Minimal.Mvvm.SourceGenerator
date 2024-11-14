@@ -8,12 +8,18 @@ namespace Minimal.Mvvm.SourceGenerator
 {
     internal struct NotifyPropertyGenerator
     {
-        internal const string NotifyAttributeFullyQualifiedMetadataName = "Minimal.Mvvm.NotifyAttribute";
         internal const string BindableBaseFullyQualifiedMetadataName = "Minimal.Mvvm.BindableBase";
+        internal const string CustomAttributeFullyQualifiedMetadataName = "Minimal.Mvvm.CustomAttributeAttribute";
+        internal const string NotifyAttributeFullyQualifiedMetadataName = "Minimal.Mvvm.NotifyAttribute";
 
         private static readonly char[] s_trimChars = { '_' };
 
-        private readonly record struct NotifyAttributeData(string? PropertyName, Accessibility PropertyAccessibility, Accessibility GetterAccessibility, Accessibility SetterAccessibility);
+        private readonly record struct CallbackData(string? CallbackName, bool HasParameter);
+
+        private readonly record struct CustomAttributeData(string Attribute);
+
+        private readonly record struct NotifyAttributeData(string? PropertyName, string? CallbackName, bool? PreferCallbackWithParameter, Accessibility PropertyAccessibility, Accessibility GetterAccessibility, Accessibility SetterAccessibility);
+
 
         #region Pipeline
 
@@ -29,7 +35,6 @@ namespace Minimal.Mvvm.SourceGenerator
                 return false;
             }
             var baseTypeSymbol = compilation.GetTypeByMetadataName(BindableBaseFullyQualifiedMetadataName);
-            Debug.Assert(baseTypeSymbol != null);
             if (baseTypeSymbol == null || !containingType.InheritsFromType(baseTypeSymbol))
             {
                 return false;
@@ -47,7 +52,6 @@ namespace Minimal.Mvvm.SourceGenerator
                     }
                 }
             };
-            Debug.Assert(result);
             return result;
         }
 
@@ -55,44 +59,81 @@ namespace Minimal.Mvvm.SourceGenerator
 
         #region Methods
 
-        public static void Generate(IndentedTextWriter writer, IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> members)
+        public static void Generate(IndentedTextWriter writer,
+            IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> members,
+            NullableContextOptions nullableContextOptions)
         {
             bool isFirst = true;
             foreach (var (member, attributes) in members)
             {
                 if (member is not IFieldSymbol fieldSymbol)
                 {
-                    Debug.Fail($"{member} is not a IFieldSymbol");
+                    Trace.WriteLine($"{member} is not a IFieldSymbol");
                     continue;
                 }
-                GenerateForMember(writer, fieldSymbol, attributes, ref isFirst);
+                GenerateForMember(writer, fieldSymbol, attributes, nullableContextOptions, ref isFirst);
             }
         }
 
-        private static void GenerateForMember(IndentedTextWriter writer, IFieldSymbol fieldSymbol, ImmutableArray<AttributeData> attributes, ref bool isFirst)
+        private static void GenerateForMember(IndentedTextWriter writer, IFieldSymbol fieldSymbol,
+            ImmutableArray<AttributeData> attributes, NullableContextOptions nullableContextOptions, ref bool isFirst)
         {
             if (fieldSymbol.IsReadOnly)
             {
                 return;
             }
 
+            var comment = fieldSymbol.GetComment();
+
             var notifyAttribute = GetNotifyAttribute(attributes)!;
+            var allAttributes = fieldSymbol.GetAttributes();
+
             var notifyAttributeData = GetNotifyAttributeData(notifyAttribute);
+
+            var customAttributes = GetCustomAttributes(allAttributes);
+            var customAttributeData = GetCustomAttributeData(customAttributes);
 
             var backingFieldName = fieldSymbol.Name;
             var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName : GetPropertyName(backingFieldName);
 
-            var fullyQualifiedTypeName = fieldSymbol.Type.ToDisplayString();
+            var fullyQualifiedTypeName = fieldSymbol.Type.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName);
+
+            var callbackData = GetCallbackData(fieldSymbol, fullyQualifiedTypeName, notifyAttributeData);
 
             if (!isFirst)
             {
-                writer.WriteLine();
+                writer.WriteLineNoTabs(string.Empty);
             }
             isFirst = false;
 
-#if DEBUG
-            //_writer.WriteLine($"//{fullyQualifiedTypeName} {fieldSymbol.ToDisplayString()}");
-#endif
+            string nullable = nullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
+
+            string? backingCallbackFieldName = null;
+            if (callbackData.CallbackName != null)
+            {
+                backingCallbackFieldName = $"{backingFieldName}ChangedCallback";
+                writer.Write("private global::System.Action");
+                if (callbackData.HasParameter)
+                {
+                    writer.Write($"<{fullyQualifiedTypeName}>");
+                }
+                writer.WriteLine($"{nullable} {backingCallbackFieldName};");
+                writer.WriteLineNoTabs(string.Empty);
+            }
+
+            if (comment != null)
+            {
+                foreach (string line in comment)
+                {
+                    writer.WriteLine($"/// {line}");
+                }
+            }
+
+            foreach (var customAttribute in customAttributeData)
+            {
+                writer.WriteLine(customAttribute.Attribute);
+            }
+
             writer.WriteAccessibility(notifyAttributeData.PropertyAccessibility);
             /*if (notifyAttributeData.IsVirtual)
             {
@@ -106,16 +147,80 @@ namespace Minimal.Mvvm.SourceGenerator
             writer.WriteLine($"get => {backingFieldName};");
 
             writer.WriteAccessibility(notifyAttributeData.SetterAccessibility);
-            writer.WriteLine($"set => SetProperty(ref {backingFieldName}, value);");
+            writer.WriteLine(callbackData.CallbackName != null
+                ? $"set => SetProperty(ref {backingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName});"
+                : $"set => SetProperty(ref {backingFieldName}, value);");
 
             writer.Indent--;
             writer.WriteLine("}");//end property
         }
 
+        private static CallbackData GetCallbackData(IFieldSymbol fieldSymbol, string fullyQualifiedTypeName,
+            NotifyAttributeData notifyAttributeData)
+        {
+            if (notifyAttributeData.CallbackName == null) return default;
+
+            var containingType = fieldSymbol.ContainingType;
+            var members = containingType.GetMembers(notifyAttributeData.CallbackName);
+            if (members.Length == 0)
+            {
+                return new CallbackData(notifyAttributeData.CallbackName, false);
+            }
+
+            var methods = new List<(IMethodSymbol method, bool hasParameter)>(members.Length);
+
+            bool hasParameter;
+            foreach (var member in members)
+            {
+                if (member is not IMethodSymbol method || !IsCallback(method, fieldSymbol.Type, out hasParameter))
+                {
+                    continue;
+                }
+                methods.Add((method, hasParameter));
+            }
+
+            hasParameter = methods.Count switch
+            {
+                1 => methods[0].hasParameter,
+                > 1 when notifyAttributeData.PreferCallbackWithParameter == true => methods.Any(m => m.hasParameter),
+                > 1 => methods.All(m => m.hasParameter),
+                _ => false
+            };
+            return new CallbackData(notifyAttributeData.CallbackName, hasParameter);
+        }
+
+        private static bool IsCallback(IMethodSymbol methodSymbol, ITypeSymbol parameterType, out bool hasParameter)
+        {
+            hasParameter = false;
+            if (!methodSymbol.ReturnsVoid) return false;
+            var parameters = methodSymbol.Parameters;
+            if (parameters.Length > 1) return false;
+            hasParameter = parameters.Length == 1;
+            return parameters.Length == 0 || parameterType.IsAssignableFromType(parameters[0].Type);
+        }
+
+        private static AttributeData? GetNotifyAttribute(IEnumerable<AttributeData> attributes)
+        {
+            return attributes.SingleOrDefault(x => x.AttributeClass?.Name == "NotifyAttribute");
+        }
+
         private static NotifyAttributeData GetNotifyAttributeData(AttributeData notifyAttribute)
         {
-            string? propertyName = null;
+            string? propertyName = null, callbackName = null;
+            bool? preferCallbackWithParameter = null;
             Accessibility propertyAccessibility, getterAccessibility = Accessibility.NotApplicable, setterAccessibility = Accessibility.NotApplicable;
+            if (notifyAttribute.ConstructorArguments.Length > 0)
+            {
+                foreach (var typedConstant in notifyAttribute.ConstructorArguments)
+                {
+                    switch (typedConstant.Type?.SpecialType)
+                    {
+                        case SpecialType.System_String:
+                            propertyName = (string?)typedConstant.Value;
+                            break;
+                    }
+                }
+            }
             if (notifyAttribute.NamedArguments.Length > 0)
             {
                 foreach (var pair in notifyAttribute.NamedArguments)
@@ -127,17 +232,33 @@ namespace Minimal.Mvvm.SourceGenerator
                         case nameof(NotifyAttribute.PropertyName):
                             propertyName = (string?)typedConstant.Value;
                             break;
+                        case nameof(NotifyAttribute.CallbackName):
+                            callbackName = (string?)typedConstant.Value;
+                            break;
+                        case nameof(NotifyAttribute.PreferCallbackWithParameter):
+                            preferCallbackWithParameter = (bool?)typedConstant.Value;
+                            break;
                         case nameof(NotifyAttribute.Getter):
                             getterAccessibility = (Accessibility)typedConstant.Value!;
                             break;
                         case nameof(NotifyAttribute.Setter):
                             setterAccessibility = (Accessibility)typedConstant.Value!;
                             break;
+                        default:
+                            Trace.WriteLine($"Unexpected argument name: {name}");
+                            break;
                     }
                 }
             }
 
-            if (getterAccessibility == Accessibility.NotApplicable || getterAccessibility >= setterAccessibility)
+            if (getterAccessibility == Accessibility.Internal && setterAccessibility == Accessibility.Protected ||
+                getterAccessibility == Accessibility.Protected && setterAccessibility == Accessibility.Internal)
+            {
+                //1) get is internal, set is protected OR 2) get is protected, set is internal
+                propertyAccessibility = Accessibility.ProtectedOrInternal;
+                getterAccessibility = Accessibility.NotApplicable;
+            }
+            else if (getterAccessibility == Accessibility.NotApplicable || getterAccessibility >= setterAccessibility)
             {
                 propertyAccessibility = getterAccessibility == Accessibility.NotApplicable ? Accessibility.Public : getterAccessibility;
                 if (getterAccessibility != Accessibility.NotApplicable && getterAccessibility == setterAccessibility)
@@ -152,15 +273,44 @@ namespace Minimal.Mvvm.SourceGenerator
                 setterAccessibility = Accessibility.NotApplicable;
             }
 
-            Debug.Assert(propertyAccessibility != Accessibility.NotApplicable);
-
-            return new NotifyAttributeData(propertyName, propertyAccessibility, getterAccessibility,
+            return new NotifyAttributeData(propertyName, callbackName, preferCallbackWithParameter, propertyAccessibility, getterAccessibility,
                 setterAccessibility);
         }
 
-        private static AttributeData? GetNotifyAttribute(IEnumerable<AttributeData> attributes)
+        private static IEnumerable<AttributeData> GetCustomAttributes(ImmutableArray<AttributeData> attributes)
         {
-            return attributes.SingleOrDefault(x => x.AttributeClass?.Name == "NotifyAttribute");
+            return attributes.Where(x => x.AttributeClass?.ToDisplayString() ==
+                                         CustomAttributeFullyQualifiedMetadataName);
+        }
+
+        private static IEnumerable<CustomAttributeData> GetCustomAttributeData(IEnumerable<AttributeData> customAttributes)
+        {
+            List<CustomAttributeData>? list = null;
+            foreach (var customAttribute in customAttributes)
+            {
+                if (customAttribute.ConstructorArguments.Length <= 0) continue;
+                foreach (var typedConstant in customAttribute.ConstructorArguments)
+                {
+                    switch (typedConstant.Type?.SpecialType)
+                    {
+                        case SpecialType.System_String:
+                            var attribute = (string?)typedConstant.Value;
+                            if (!string.IsNullOrWhiteSpace(attribute))
+                            {
+                                attribute = attribute!.Trim();
+                                if (!attribute.StartsWith("[") && !attribute.EndsWith("]"))
+                                {
+                                    attribute = $"[{attribute}]";
+                                }
+                                list ??= new List<CustomAttributeData>();
+                                list.Add(new CustomAttributeData(attribute));
+                            }
+                            break;
+                    }
+                }
+            }
+
+            return (IEnumerable<CustomAttributeData>?)list ?? Array.Empty<CustomAttributeData>();
         }
 
         private static string GetPropertyName(string fieldName)

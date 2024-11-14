@@ -7,10 +7,11 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <IncludeSymbols>false</IncludeSymbols>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageTags>nuext;minimal;mvvm;wpf;ui;windows;viewmodel;command;relaycommand;asynccommand;sourcegenerator;generator;async</PackageTags>
-    <Description>This package allows you to generate boilerplate code at compile time specifically for ViewModels using the Minimal MVVM Framework, streamlining your development process.</Description>
-    <Version>0.1.0</Version>
+    <Description>This package allows you to generate boilerplate code at compile time specifically for ViewModels using the Minimal MVVM Framework, thereby streamlining your development process and reducing repetitive tasks.</Description>
+    <Version>0.2.0</Version>
     <RootNamespace>Minimal.Mvvm.SourceGenerator</RootNamespace>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>logo128.png</PackageIcon>
@@ -18,8 +19,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="$(MSBuildProjectName).Tests" Key="00240000048000009400000006020000002400005253413100040000010001006fe78604a88c4435cd66f3783ab59c2a7cc5f1f20103d9274026db1aafd95fb317561a5cb328cbc43a2904e476382661c08fe9381e1f8ca562759b0040e2a648158be90ab2fbf35a7cd7a0db2f8d6c6774129f84bdf098b75c7fc61431c035ad0fc068185e70b1bd775c0b770e87f8cbf01559ab55146c9f4ecc8ebdaa85e5c0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
-    <PackageReference Include="NuExt.Minimal.Mvvm" Version="0.1.6" />
+    <PackageReference Include="NuExt.Minimal.Mvvm" Version="0.2.0" />
   </ItemGroup>
 
   <ItemGroup>

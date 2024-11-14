@@ -4,9 +4,10 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Text;
 
-/*
+/* Useful links
  * https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.md
  * https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.cookbook.md
+ * https://andrewlock.net/series/creating-a-source-generator/
  * https://andrewlock.net/exploring-dotnet-6-part-9-source-generator-updates-incremental-generators/
  */
 
@@ -30,6 +31,9 @@ namespace Minimal.Mvvm.SourceGenerator
             (hintName : "NotifyAttribute.g.cs", source : """
                 using System;
 
+                /// <summary>
+                /// Enum to define access modifiers.
+                /// </summary>
                 internal enum AccessModifier
                 {
                     Default = 0,
@@ -43,17 +47,72 @@ namespace Minimal.Mvvm.SourceGenerator
 
                 namespace Minimal.Mvvm
                 {
+                    /// <summary>
+                    /// A custom attribute that allows specifying a fully qualified attribute name to be applied to a generated property.
+                    /// </summary>
+                    [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = true)]
+                    internal sealed class CustomAttributeAttribute : Attribute
+                    {
+                        /// <summary>
+                        /// Initializes a new instance of the <see cref="CustomAttributeAttribute"/> class with the specified fully qualified attribute name.
+                        /// </summary>
+                        /// <param name="fullyQualifiedAttributeName">The fully qualified name of the attribute to apply.</param>
+                        public CustomAttributeAttribute(string fullyQualifiedAttributeName)
+                        {
+                            FullyQualifiedAttributeName = fullyQualifiedAttributeName;
+                        }
+
+                        /// <summary>
+                        /// Gets the fully qualified name of the attribute to apply.
+                        /// </summary>
+                        public string FullyQualifiedAttributeName { get; }
+                    }
+
+                    /// <summary>
+                    /// Attribute to mark a field for code generation of property and associated callback methods.
+                    /// </summary>
                     [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
                     internal sealed class NotifyAttribute : Attribute
                     {
+                        /// <summary>
+                        /// Initializes a new instance of the <see cref="NotifyAttribute"/> class.
+                        /// </summary>
                         public NotifyAttribute()
                         {
                         }
 
+                        /// <summary>
+                        /// Initializes a new instance of the <see cref="NotifyAttribute"/> class with the specified property name.
+                        /// </summary>
+                        /// <param name="propertyName">The name of the property.</param>
+                        public NotifyAttribute(string propertyName)
+                        {
+                            PropertyName = propertyName;
+                        }
+
+                        /// <summary>
+                        /// Gets or sets the name of the property.
+                        /// </summary>
                         public string PropertyName { get; set; }
 
+                        /// <summary>
+                        /// Gets or sets the name of the callback method.
+                        /// </summary>
+                        public string CallbackName { get; set; }
+
+                        /// <summary>
+                        /// Gets or sets a value indicating whether to prefer method with parameter for callback.
+                        /// </summary>
+                        public bool PreferCallbackWithParameter { get; set; }
+
+                        /// <summary>
+                        /// Gets or sets the access modifier for the getter.
+                        /// </summary>
                         public AccessModifier Getter { get; set; }
 
+                        /// <summary>
+                        /// Gets or sets the access modifier for the setter.
+                        /// </summary>
                         public AccessModifier Setter { get; set; }
                     }
                 }
@@ -110,8 +169,9 @@ namespace Minimal.Mvvm.SourceGenerator
 
                 var nullableContextOptions = compilation.Options.NullableContextOptions;
                 var typeInfos = new Dictionary<INamedTypeSymbol, List<(ISymbol member, ImmutableArray<AttributeData> attributes, AttributeType attributeType)>>(SymbolEqualityComparer.Default);
-                foreach (var (symbol, attributes, attributeType) in items)
+                foreach (var item in items)
                 {
+                    var (symbol, attributes, attributeType) = item;
                     switch (attributeType)
                     {
                         case AttributeType.Notify:
@@ -123,10 +183,9 @@ namespace Minimal.Mvvm.SourceGenerator
                     }
                     if (!typeInfos.TryGetValue(symbol.ContainingType, out var typeInfo))
                     {
-                        typeInfos[symbol.ContainingType] = new() { (symbol, attributes, attributeType) };
-                        continue;
+                        typeInfos[symbol.ContainingType] = typeInfo = new();
                     }
-                    typeInfo.Add((symbol, attributes, attributeType));
+                    typeInfo.Add(item);
                 }
                 if (typeInfos.Count == 0)
                 {
@@ -186,7 +245,7 @@ namespace Minimal.Mvvm.SourceGenerator
                         switch (group.Key)
                         {
                             case AttributeType.Notify:
-                                NotifyPropertyGenerator.Generate(writer, members.Select(m => (m.member, m.attributes)));
+                                NotifyPropertyGenerator.Generate(writer, members.Select(m => (m.member, m.attributes)), nullableContextOptions);
                                 break;
                         }
                     }

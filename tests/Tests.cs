@@ -87,20 +87,54 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
             Assert.Pass();
         }
 
-        public class MyModel : BindableBase
+        private partial class MyModel : ViewModelBase
         {
+            [Notify("MyName", CallbackName = nameof(OnCurrentViewModelChanged), PreferCallbackWithParameter = true)]
             private string _name = null!;
-            public string Name
+            //get is internal, set is protected
+            protected internal string Name
             {
                 get => _name;
-                private set => SetProperty(ref _name, value);
+                protected set => SetProperty(ref _name, value);
             }
 
             private string? _description;
-            internal string? Description
+            //get is protected, set is internal
+            protected internal string? Description
             {
-                private get => _description;
-                set => SetProperty(ref _description, value);
+                get => _description;
+                internal set => SetProperty(ref _description, value);
+            }
+        }
+
+        partial class MyModel
+        {
+            private global::Minimal.Mvvm.ViewModelBase? _currentViewModel;
+
+            [global::System.Text.Json.Serialization.JsonIgnore]
+            [global::System.Text.Json.Serialization.JsonPropertyName("Name")]
+            public global::Minimal.Mvvm.ViewModelBase? CurrentViewModel
+            {
+                get => _currentViewModel;
+                set => SetProperty(ref _currentViewModel, value, _onCurrentViewModelChanged ??= OnCurrentViewModelChanged);
+            }
+
+            private Action<ViewModelBase?>? _onCurrentViewModelChanged;
+
+            private void OnCurrentViewModelChanged()
+            {
+            }
+
+            private void OnCurrentViewModelChanged(BindableBase? oldCurrentViewModel)
+            {
+            }
+
+            private void OnCurrentViewModelChanged(ViewModelBase? oldCurrentViewModel)
+            {
+            }
+
+            private void OnCurrentViewModelChanged(MyModel? oldCurrentViewModel)
+            {
             }
         }
     }

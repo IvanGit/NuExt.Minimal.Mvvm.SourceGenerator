@@ -23,6 +23,25 @@ Or through the Visual Studio package manager:
 2. Search for `NuExt.Minimal.Mvvm.SourceGenerator`.
 3. Click "Install".
 
+### Dependencies
+
+To use this source generator effectively, you need to have any of these packages installed in your project: [`NuExt.Minimal.Mvvm`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm), [`NuExt.Minimal.Mvvm.Windows`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.Windows), or [`NuExt.Minimal.Mvvm.MahApps.Metro`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.MahApps.Metro). You can add them via NuGet as well:
+
+For the base MVVM framework:
+```sh
+dotnet add package NuExt.Minimal.Mvvm
+```
+
+For Windows-specific extensions:
+```sh
+dotnet add package NuExt.Minimal.Mvvm.Windows
+```
+
+For MahApps.Metro integration:
+```sh
+dotnet add package NuExt.Minimal.Mvvm.MahApps.Metro
+```
+
 ### Usage Examples
 
 #### Example using auto-generated property notifications
@@ -42,7 +61,7 @@ public partial class MyModel : BindableBase
 }
 ```
 
-A generator could produce the following:
+The generator could produce the following:
 
 ```csharp
 partial class MyModel
@@ -60,6 +79,8 @@ partial class MyModel
     }
 }
 ```
+
+This example demonstrates how the source generator automatically creates properties with notification changes for fields marked with the `[Notify]` attribute, thereby reducing boilerplate code.
 
 ### Contributing
 

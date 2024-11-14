@@ -5,6 +5,7 @@ using Minimal.Mvvm;
 using Minimal.Mvvm.SourceGenerator;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 
 namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
@@ -19,12 +20,12 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
             var tree = CSharpSyntaxTree.ParseText(code);
 
             var references =
-#if NET8_0
-                ReferenceAssemblies.Net80
+#if NET8_0_OR_GREATER
+                ReferenceAssemblies.Net80.Cast<MetadataReference>()
 #elif NETFRAMEWORK
-                ReferenceAssemblies.Net472
+                ReferenceAssemblies.Net472.Cast<MetadataReference>().Concat(new[] { MetadataReference.CreateFromFile(typeof(System.Text.Json.JsonSerializer).GetTypeInfo().Assembly.Location) })
 #endif
-                    .Cast<MetadataReference>().Concat(new[]
+                    .Concat(new[]
                         { MetadataReference.CreateFromFile(typeof(BindableBase).GetTypeInfo().Assembly.Location) });
 
             var compilation = CSharpCompilation.Create("HelloWorld.dll",

@@ -14,7 +14,21 @@
     [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
     internal sealed class NotifyAttribute : Attribute
     {
+        public NotifyAttribute()
+        {
+
+        }
+
+        public NotifyAttribute(string propertyName)
+        {
+
+        }
+
         public string PropertyName { get; set; } = null!;
+
+        public string CallbackName { get; set; } = null!;
+
+        public bool PreferCallbackWithParameter { get; set; }
 
         public AccessModifier Getter { get; set; }
 
