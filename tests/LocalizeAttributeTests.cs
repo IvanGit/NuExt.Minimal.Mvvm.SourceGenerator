@@ -1,59 +1,26 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Text;
 using System.Collections.Immutable;
 
 namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 {
-    internal class NotifyAttributeTests : SourceGeneratorTestBase
+    internal class LocalizeAttributeTests : SourceGeneratorTestBase
     {
         [Test]
         public void NotifyAttributePropertyNamesTest()
         {
-            var sources = PropertyNames.Sources;
+            var sources = LocalizeAttributes.Sources;
+
+            var basePath = AppDomain.CurrentDomain.BaseDirectory;
+            var jsonFilePath = Path.Combine(basePath, "Config/local.en-US.json");
+
+            Assert.That(File.Exists(jsonFilePath), Is.True);
 
             foreach (var (source, expected) in sources)
             {
                 var compilation = Compile(source);
-                var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation);
-                MultipleAssert(outputCompilation, diagnostics, generatorResult, GetExpectedSource(expected));
-            }
-        }
-
-        [Test]
-        public void NotifyAttributeAccessModifiersTest()
-        {
-            var sources = AccessModifiers.Sources;
-
-            foreach (var (source, expected) in sources)
-            {
-                var compilation = Compile(source);
-                var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation);
-                MultipleAssert(outputCompilation, diagnostics, generatorResult, GetExpectedSource(expected));
-            }
-        }
-
-        [Test]
-        public void NotifyAttributeCallbacksTest()
-        {
-            var sources = Callbacks.Sources;
-
-            foreach (var (source, expected) in sources)
-            {
-                var compilation = Compile(source);
-                var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation);
-                MultipleAssert(outputCompilation, diagnostics, generatorResult, GetExpectedSource(expected));
-            }
-        }
-
-        [Test]
-        public void NotifyAttributeCustomAttributesTest()
-        {
-            var sources = CustomAttributes.Sources;
-
-            foreach (var (source, expected) in sources)
-            {
-                var compilation = Compile(source);
-                var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation);
+                var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation, ImmutableArray.Create<AdditionalText>(new AdditionalTextFileWrapper(jsonFilePath)));
                 MultipleAssert(outputCompilation, diagnostics, generatorResult, GetExpectedSource(expected));
             }
         }
@@ -92,6 +59,23 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
             var expectedSourceLines = GetSourceLines(expectedSource!);
 
             Assert.That(generatedSourceLines, Is.EqualTo(expectedSourceLines));
+        }
+
+        public class AdditionalTextFileWrapper : AdditionalText
+        {
+            private readonly string _path;
+
+            public AdditionalTextFileWrapper(string path)
+            {
+                _path = path;
+            }
+
+            public override string Path => _path;
+
+            public override SourceText GetText(CancellationToken cancellationToken = default)
+            {
+                return SourceText.From(File.ReadAllText(Path));
+            }
         }
     }
 }

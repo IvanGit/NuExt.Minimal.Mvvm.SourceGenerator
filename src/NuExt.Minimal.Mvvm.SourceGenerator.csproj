@@ -11,7 +11,7 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageTags>nuext;minimal;mvvm;wpf;ui;windows;viewmodel;command;relaycommand;asynccommand;sourcegenerator;generator;async</PackageTags>
     <Description>This package allows you to generate boilerplate code at compile time specifically for ViewModels using the Minimal MVVM Framework, thereby streamlining your development process and reducing repetitive tasks.</Description>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <RootNamespace>Minimal.Mvvm.SourceGenerator</RootNamespace>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>logo128.png</PackageIcon>
@@ -24,7 +24,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
-    <PackageReference Include="NuExt.Minimal.Mvvm" Version="0.2.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" PrivateAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
@@ -32,4 +32,15 @@
     <None Include=".\..\README.md" Pack="true" PackagePath="\" />
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <GetTargetPathDependsOn>$(GetTargetPathDependsOn);GetDependencyTargetPaths</GetTargetPathDependsOn>
+  </PropertyGroup>
+
+  <Target Name="GetDependencyTargetPaths">
+    <ItemGroup>
+      <TargetPathWithTargetPlatformMoniker Include="$(PKGNewtonsoft_Json)\lib\netstandard2.0\Newtonsoft.Json.dll" IncludeRuntimeDependency="false" />
+    </ItemGroup>
+  </Target>
+
 </Project>

@@ -66,7 +66,7 @@ The generator could produce the following:
 ```csharp
 partial class MyModel
 {
-    public string Description
+    public string? Description
     {
         get => _description;
         set => SetProperty(ref _description, value);

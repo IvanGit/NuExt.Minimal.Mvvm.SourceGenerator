@@ -66,7 +66,7 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 
             // We can now assert things about the resulting compilation:
             Assert.That(diagnostics.IsEmpty); // there were no diagnostics created by the generators
-            Assert.That(outputCompilation.SyntaxTrees.Count() == 3);
+            Assert.That(outputCompilation.SyntaxTrees.Count(), Is.EqualTo(3));
             var allDiagnostics = outputCompilation.GetDiagnostics();
             Assert.That(allDiagnostics.IsEmpty); // verify the compilation with the added source has no diagnostics
 
@@ -74,15 +74,15 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
             GeneratorDriverRunResult runResult = driver.GetRunResult();
 
             // The runResult contains the combined results of all generators passed to the driver
-            Assert.That(runResult.GeneratedTrees.Length == 2);
+            Assert.That(runResult.GeneratedTrees.Length, Is.EqualTo(2));
             Assert.That(runResult.Diagnostics.IsEmpty);
 
             // Or you can access the individual results on a by-generator basis
             GeneratorRunResult generatorResult = runResult.Results[0];
             //Assert.That(generatorResult.Generator, Is.EqualTo(generator));
             Assert.That(generatorResult.Diagnostics.IsEmpty);
-            Assert.That(generatorResult.GeneratedSources.Length == 2);
-            Assert.That(generatorResult.Exception is null);
+            Assert.That(generatorResult.GeneratedSources.Length, Is.EqualTo(2));
+            Assert.That(generatorResult.Exception, Is.Null);
 
             Assert.Pass();
         }

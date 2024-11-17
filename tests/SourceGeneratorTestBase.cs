@@ -5,7 +5,6 @@ using Minimal.Mvvm;
 using Minimal.Mvvm.SourceGenerator;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 
 namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
@@ -57,11 +56,21 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 
         protected static (CSharpCompilation? outputCompilation, ImmutableArray<Diagnostic> diagnostics, GeneratorRunResult generatorResult) RunGenerator(CSharpCompilation compilation)
         {
+            return RunGenerator(compilation, ImmutableArray<AdditionalText>.Empty);
+        }
+
+        protected static (CSharpCompilation? outputCompilation, ImmutableArray<Diagnostic> diagnostics, GeneratorRunResult generatorResult) RunGenerator(CSharpCompilation compilation, ImmutableArray<AdditionalText> additionalTexts)
+        {
             IIncrementalGenerator generator = new Generator();
             var sourceGenerator = generator.AsSourceGenerator();
 
             // Create the driver that will control the generation, passing in our generator
             GeneratorDriver driver = CSharpGeneratorDriver.Create(sourceGenerator);
+
+            if (additionalTexts != null && additionalTexts.Length > 0)
+            {
+                driver = driver.AddAdditionalTexts(additionalTexts);
+            }
 
             // Run the generation pass
             // (Note: the generator driver itself is immutable, and all calls return an updated version of the driver that you should use for subsequent calls)

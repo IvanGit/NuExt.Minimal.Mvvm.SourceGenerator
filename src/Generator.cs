@@ -7,6 +7,7 @@ using System.Text;
 /* Useful links
  * https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.md
  * https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.cookbook.md
+ * https://github.com/dotnet/roslyn-sdk/blob/main/samples/CSharp/SourceGenerators/SourceGeneratorSamples/CSharpSourceGeneratorSamples.csproj
  * https://andrewlock.net/series/creating-a-source-generator/
  * https://andrewlock.net/exploring-dotnet-6-part-9-source-generator-updates-incremental-generators/
  */
@@ -21,6 +22,7 @@ namespace Minimal.Mvvm.SourceGenerator
         private enum AttributeType
         {
             Notify,
+            Localize
         }
 
         #endregion
@@ -28,7 +30,7 @@ namespace Minimal.Mvvm.SourceGenerator
         #region Sources
 
         private static readonly (string hintName, string source)[] s_sources = {
-            (hintName : "NotifyAttribute.g.cs", source : """
+            (hintName : "Minimal.Mvvm.Attributes.g.cs", source : """
                 using System;
 
                 /// <summary>
@@ -115,6 +117,18 @@ namespace Minimal.Mvvm.SourceGenerator
                         /// </summary>
                         public AccessModifier Setter { get; set; }
                     }
+
+                    /// <summary>
+                    /// Specifies that the target class should be localized using the provided JSON file.
+                    /// </summary>
+                    [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                    internal sealed class LocalizeAttribute : Attribute
+                    {
+                        public LocalizeAttribute(string jsonFileName)
+                        {
+
+                        }
+                    }
                 }
                 """)
         };
@@ -129,7 +143,10 @@ namespace Minimal.Mvvm.SourceGenerator
         {
             (fullyQualifiedMetadataName: NotifyPropertyGenerator.NotifyAttributeFullyQualifiedMetadataName,
                 predicate: NotifyPropertyGenerator.Predicate,
-                transform: static (context, cancellationToken) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Notify))
+                transform: static (context, cancellationToken) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Notify)),
+            (fullyQualifiedMetadataName: LocalizePropertyGenerator.LocalizeAttributeFullyQualifiedMetadataName,
+                predicate: LocalizePropertyGenerator.Predicate,
+                transform: static (context, cancellationToken) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Localize))
         };
 
         #endregion
@@ -161,11 +178,19 @@ namespace Minimal.Mvvm.SourceGenerator
                         transform: transform);
             }).ToList();
 
-            var combined = context.CompilationProvider.Combine(pipelines.MergeSources());
+            var pipeline = context.AdditionalTextsProvider
+                .Where(static (text) => text.Path.EndsWith(".json"))
+                .Select(static (text, cancellationToken) =>
+                {
+                    var name = Path.GetFileName(text.Path);
+                    return (name, text);
+                });
+
+            var combined = context.CompilationProvider.Combine(pipeline.Collect()).Combine(pipelines.MergeSources());
 
             context.RegisterSourceOutput(combined, static (context, pair) =>
             {
-                var (compilation, items) = pair;
+                var ((compilation, additionalTexts), items) = pair;
 
                 var nullableContextOptions = compilation.Options.NullableContextOptions;
                 var typeInfos = new Dictionary<INamedTypeSymbol, List<(ISymbol member, ImmutableArray<AttributeData> attributes, AttributeType attributeType)>>(SymbolEqualityComparer.Default);
@@ -179,13 +204,24 @@ namespace Minimal.Mvvm.SourceGenerator
                             {
                                 continue;
                             }
+                            if (!typeInfos.TryGetValue(symbol.ContainingType, out var typeInfo))
+                            {
+                                typeInfos[symbol.ContainingType] = typeInfo = new();
+                            }
+                            typeInfo.Add(item);
+                            break;
+                        case AttributeType.Localize:
+                            if (symbol is not INamedTypeSymbol typeSymbol || !LocalizePropertyGenerator.Predicate(compilation, typeSymbol, attributes, additionalTexts))
+                            {
+                                continue;
+                            }
+                            if (!typeInfos.TryGetValue(typeSymbol, out typeInfo))
+                            {
+                                typeInfos[typeSymbol] = typeInfo = new();
+                            }
+                            typeInfo.Add(item);
                             break;
                     }
-                    if (!typeInfos.TryGetValue(symbol.ContainingType, out var typeInfo))
-                    {
-                        typeInfos[symbol.ContainingType] = typeInfo = new();
-                    }
-                    typeInfo.Add(item);
                 }
                 if (typeInfos.Count == 0)
                 {
@@ -245,7 +281,11 @@ namespace Minimal.Mvvm.SourceGenerator
                         switch (group.Key)
                         {
                             case AttributeType.Notify:
-                                NotifyPropertyGenerator.Generate(writer, members.Select(m => (m.member, m.attributes)), nullableContextOptions);
+                                NotifyPropertyGenerator.Generate(writer, members.Select(m => m.member), nullableContextOptions);
+                                break;
+
+                            case AttributeType.Localize:
+                                LocalizePropertyGenerator.Generate(writer, members.Select(m => (m.member, m.attributes)), additionalTexts, nullableContextOptions);
                                 break;
                         }
                     }

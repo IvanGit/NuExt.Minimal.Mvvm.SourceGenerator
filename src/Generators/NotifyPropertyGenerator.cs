@@ -23,6 +23,23 @@ namespace Minimal.Mvvm.SourceGenerator
 
         #region Pipeline
 
+        internal static bool Predicate(SyntaxNode attributeTarget, CancellationToken cancellationToken)
+        {
+            _ = cancellationToken;
+            //Trace.WriteLine($"pipeline syntaxNode={attributeTarget}");
+            bool result = attributeTarget is VariableDeclaratorSyntax
+            {
+                Parent: VariableDeclarationSyntax
+                {
+                    Parent: FieldDeclarationSyntax
+                    {
+                        AttributeLists.Count: > 0, Parent: ClassDeclarationSyntax
+                    }
+                }
+            };
+            return result;
+        }
+
         internal static bool Predicate(Compilation compilation, IFieldSymbol fieldSymbol)
         {
             if (fieldSymbol.IsReadOnly)
@@ -42,41 +59,26 @@ namespace Minimal.Mvvm.SourceGenerator
             return true;
         }
 
-        internal static bool Predicate(SyntaxNode attributeTarget, CancellationToken cancellationToken)
-        {
-            _ = cancellationToken;
-            //Trace.WriteLine($"pipeline syntaxNode={attributeTarget}");
-            bool result = attributeTarget is VariableDeclaratorSyntax { Parent: VariableDeclarationSyntax { Parent: FieldDeclarationSyntax
-                    {
-                        AttributeLists.Count: > 0, Parent: ClassDeclarationSyntax
-                    }
-                }
-            };
-            return result;
-        }
 
         #endregion
 
         #region Methods
 
-        public static void Generate(IndentedTextWriter writer,
-            IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> members,
-            NullableContextOptions nullableContextOptions)
+        public static void Generate(IndentedTextWriter writer, IEnumerable<ISymbol> members, NullableContextOptions nullableContextOptions)
         {
             bool isFirst = true;
-            foreach (var (member, attributes) in members)
+            foreach (var member in members)
             {
                 if (member is not IFieldSymbol fieldSymbol)
                 {
                     Trace.WriteLine($"{member} is not a IFieldSymbol");
                     continue;
                 }
-                GenerateForMember(writer, fieldSymbol, attributes, nullableContextOptions, ref isFirst);
+                GenerateForMember(writer, fieldSymbol, nullableContextOptions, ref isFirst);
             }
         }
 
-        private static void GenerateForMember(IndentedTextWriter writer, IFieldSymbol fieldSymbol,
-            ImmutableArray<AttributeData> attributes, NullableContextOptions nullableContextOptions, ref bool isFirst)
+        private static void GenerateForMember(IndentedTextWriter writer, IFieldSymbol fieldSymbol, NullableContextOptions nullableContextOptions, ref bool isFirst)
         {
             if (fieldSymbol.IsReadOnly)
             {
@@ -85,12 +87,12 @@ namespace Minimal.Mvvm.SourceGenerator
 
             var comment = fieldSymbol.GetComment();
 
-            var notifyAttribute = GetNotifyAttribute(attributes)!;
-            var allAttributes = fieldSymbol.GetAttributes();
+            var attributes = fieldSymbol.GetAttributes();
 
+            var notifyAttribute = GetNotifyAttribute(attributes)!;
             var notifyAttributeData = GetNotifyAttributeData(notifyAttribute);
 
-            var customAttributes = GetCustomAttributes(allAttributes);
+            var customAttributes = GetCustomAttributes(attributes);
             var customAttributeData = GetCustomAttributeData(customAttributes);
 
             var backingFieldName = fieldSymbol.Name;
