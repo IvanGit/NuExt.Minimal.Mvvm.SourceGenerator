@@ -72,10 +72,27 @@ namespace Minimal.Mvvm.SourceGenerator
             return false;
         }
 
+        public static bool ImplementsInterface(this ITypeSymbol classSymbol, ITypeSymbol interfaceSymbol)
+        {
+            foreach (var implementedInterface in classSymbol.AllInterfaces)
+            {
+                if (SymbolEqualityComparer.Default.Equals(implementedInterface, interfaceSymbol))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public static bool InheritsFromTypeOrImplementsInterface(this ITypeSymbol classSymbol, ITypeSymbol typeSymbol)
+        {
+            return classSymbol.InheritsFromType(typeSymbol) || classSymbol.ImplementsInterface(typeSymbol);
+        }
+
         public static bool IsAssignableFromType(this ITypeSymbol classSymbol, ITypeSymbol baseTypeSymbol)
         {
-            return SymbolEqualityComparer.Default.Equals(classSymbol, baseTypeSymbol) ||
-                   classSymbol.InheritsFromType(baseTypeSymbol);
+            return SymbolEqualityComparer.Default.Equals(classSymbol, baseTypeSymbol) 
+                   || classSymbol.InheritsFromTypeOrImplementsInterface(baseTypeSymbol);
         }
     }
 }

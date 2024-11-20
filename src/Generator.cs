@@ -7,9 +7,6 @@ using System.Text;
 /* Useful links
  * https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.md
  * https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.cookbook.md
- * https://github.com/dotnet/roslyn-sdk/blob/main/samples/CSharp/SourceGenerators/SourceGeneratorSamples/CSharpSourceGeneratorSamples.csproj
- * https://andrewlock.net/series/creating-a-source-generator/
- * https://andrewlock.net/exploring-dotnet-6-part-9-source-generator-updates-incremental-generators/
  */
 
 namespace Minimal.Mvvm.SourceGenerator
@@ -30,107 +27,120 @@ namespace Minimal.Mvvm.SourceGenerator
         #region Sources
 
         private static readonly (string hintName, string source)[] s_sources = {
-            (hintName : "Minimal.Mvvm.Attributes.g.cs", source : """
-                using System;
+            (hintName : "Minimal.Mvvm.AccessModifier.g.cs", source : """
+            /// <summary>
+            /// Enum to define access modifiers.
+            /// </summary>
+            internal enum AccessModifier
+            {
+                Default = 0,
+                Public = 6,
+                ProtectedInternal = 5,
+                Internal = 4,
+                Protected = 3,
+                PrivateProtected = 2,
+                Private = 1,
+            }
+            """),
+            (hintName : "Minimal.Mvvm.CustomAttributeAttribute.g.cs", source : """
+            using System;
 
+            namespace Minimal.Mvvm
+            {
                 /// <summary>
-                /// Enum to define access modifiers.
+                /// A custom attribute that allows specifying a fully qualified attribute name to be applied to a generated property.
                 /// </summary>
-                internal enum AccessModifier
-                {
-                    Default = 0,
-                    Public = 6,
-                    ProtectedInternal = 5,
-                    Internal = 4,
-                    Protected = 3,
-                    PrivateProtected = 2,
-                    Private = 1,
-                }
-
-                namespace Minimal.Mvvm
+                [AttributeUsage(AttributeTargets.Field | AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
+                internal sealed class CustomAttributeAttribute : Attribute
                 {
                     /// <summary>
-                    /// A custom attribute that allows specifying a fully qualified attribute name to be applied to a generated property.
+                    /// Initializes a new instance of the <see cref="CustomAttributeAttribute"/> class with the specified fully qualified attribute name.
                     /// </summary>
-                    [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = true)]
-                    internal sealed class CustomAttributeAttribute : Attribute
+                    /// <param name="fullyQualifiedAttributeName">The fully qualified name of the attribute to apply.</param>
+                    public CustomAttributeAttribute(string fullyQualifiedAttributeName)
                     {
-                        /// <summary>
-                        /// Initializes a new instance of the <see cref="CustomAttributeAttribute"/> class with the specified fully qualified attribute name.
-                        /// </summary>
-                        /// <param name="fullyQualifiedAttributeName">The fully qualified name of the attribute to apply.</param>
-                        public CustomAttributeAttribute(string fullyQualifiedAttributeName)
-                        {
-                            FullyQualifiedAttributeName = fullyQualifiedAttributeName;
-                        }
-
-                        /// <summary>
-                        /// Gets the fully qualified name of the attribute to apply.
-                        /// </summary>
-                        public string FullyQualifiedAttributeName { get; }
+                        FullyQualifiedAttributeName = fullyQualifiedAttributeName;
                     }
-
+            
                     /// <summary>
-                    /// Attribute to mark a field for code generation of property and associated callback methods.
+                    /// Gets the fully qualified name of the attribute to apply.
                     /// </summary>
-                    [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-                    internal sealed class NotifyAttribute : Attribute
+                    public string FullyQualifiedAttributeName { get; }
+                }
+            }
+            """),
+            (hintName : "Minimal.Mvvm.LocalizeAttribute.g.cs", source : """
+            using System;
+            
+            namespace Minimal.Mvvm
+            {
+                /// <summary>
+                /// Specifies that the target class should be localized using the provided JSON file.
+                /// </summary>
+                [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                internal sealed class LocalizeAttribute : Attribute
+                {
+                    public LocalizeAttribute(string jsonFileName)
                     {
-                        /// <summary>
-                        /// Initializes a new instance of the <see cref="NotifyAttribute"/> class.
-                        /// </summary>
-                        public NotifyAttribute()
-                        {
-                        }
 
-                        /// <summary>
-                        /// Initializes a new instance of the <see cref="NotifyAttribute"/> class with the specified property name.
-                        /// </summary>
-                        /// <param name="propertyName">The name of the property.</param>
-                        public NotifyAttribute(string propertyName)
-                        {
-                            PropertyName = propertyName;
-                        }
-
-                        /// <summary>
-                        /// Gets or sets the name of the property.
-                        /// </summary>
-                        public string PropertyName { get; set; }
-
-                        /// <summary>
-                        /// Gets or sets the name of the callback method.
-                        /// </summary>
-                        public string CallbackName { get; set; }
-
-                        /// <summary>
-                        /// Gets or sets a value indicating whether to prefer method with parameter for callback.
-                        /// </summary>
-                        public bool PreferCallbackWithParameter { get; set; }
-
-                        /// <summary>
-                        /// Gets or sets the access modifier for the getter.
-                        /// </summary>
-                        public AccessModifier Getter { get; set; }
-
-                        /// <summary>
-                        /// Gets or sets the access modifier for the setter.
-                        /// </summary>
-                        public AccessModifier Setter { get; set; }
-                    }
-
-                    /// <summary>
-                    /// Specifies that the target class should be localized using the provided JSON file.
-                    /// </summary>
-                    [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-                    internal sealed class LocalizeAttribute : Attribute
-                    {
-                        public LocalizeAttribute(string jsonFileName)
-                        {
-
-                        }
                     }
                 }
-                """)
+            }
+            """),
+            (hintName : "Minimal.Mvvm.NotifyAttribute.g.cs", source : """
+            using System;
+
+            namespace Minimal.Mvvm
+            {
+                /// <summary>
+                /// Attribute to mark a field for code generation of property and associated callback methods.
+                /// </summary>
+                [AttributeUsage(AttributeTargets.Field | AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+                internal sealed class NotifyAttribute : Attribute
+                {
+                    /// <summary>
+                    /// Initializes a new instance of the <see cref="NotifyAttribute"/> class.
+                    /// </summary>
+                    public NotifyAttribute()
+                    {
+                    }
+
+                    /// <summary>
+                    /// Initializes a new instance of the <see cref="NotifyAttribute"/> class with the specified property name.
+                    /// </summary>
+                    /// <param name="propertyName">The name of the property.</param>
+                    public NotifyAttribute(string propertyName)
+                    {
+                        PropertyName = propertyName;
+                    }
+
+                    /// <summary>
+                    /// Gets or sets the name of the property.
+                    /// </summary>
+                    public string PropertyName { get; set; }
+
+                    /// <summary>
+                    /// Gets or sets the name of the callback method.
+                    /// </summary>
+                    public string CallbackName { get; set; }
+
+                    /// <summary>
+                    /// Gets or sets a value indicating whether to prefer method with parameter for callback.
+                    /// </summary>
+                    public bool PreferCallbackWithParameter { get; set; }
+
+                    /// <summary>
+                    /// Gets or sets the access modifier for the getter.
+                    /// </summary>
+                    public AccessModifier Getter { get; set; }
+
+                    /// <summary>
+                    /// Gets or sets the access modifier for the setter.
+                    /// </summary>
+                    public AccessModifier Setter { get; set; }
+                }
+            }
+            """)
         };
 
         #endregion
@@ -141,12 +151,12 @@ namespace Minimal.Mvvm.SourceGenerator
             Func<SyntaxNode, CancellationToken, bool> predicate,
             Func<GeneratorAttributeSyntaxContext, CancellationToken, (ISymbol member, ImmutableArray<AttributeData> attributes, AttributeType attributeType)> transform)[] s_pipelines =
         {
-            (fullyQualifiedMetadataName: NotifyPropertyGenerator.NotifyAttributeFullyQualifiedMetadataName,
-                predicate: NotifyPropertyGenerator.Predicate,
-                transform: static (context, cancellationToken) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Notify)),
+            (fullyQualifiedMetadataName: NotifyPropertyGenerator.NotifyAttributeFullyQualifiedName,
+                predicate: NotifyPropertyGenerator.IsValidSyntaxNode,
+                transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Notify)),
             (fullyQualifiedMetadataName: LocalizePropertyGenerator.LocalizeAttributeFullyQualifiedMetadataName,
                 predicate: LocalizePropertyGenerator.Predicate,
-                transform: static (context, cancellationToken) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Localize))
+                transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Localize))
         };
 
         #endregion
@@ -200,9 +210,22 @@ namespace Minimal.Mvvm.SourceGenerator
                     switch (attributeType)
                     {
                         case AttributeType.Notify:
-                            if (symbol is not IFieldSymbol fieldSymbol || !NotifyPropertyGenerator.Predicate(compilation, fieldSymbol))
+                            switch (symbol)
                             {
-                                continue;
+                                case IFieldSymbol fieldSymbol:
+                                    if (!NotifyPropertyGenerator.IsValidField(compilation, fieldSymbol))
+                                    {
+                                        continue;
+                                    }
+                                    break;
+                                case IMethodSymbol methodSymbol:
+                                    if (!NotifyPropertyGenerator.IsValidMethod(compilation, methodSymbol))
+                                    {
+                                        continue;
+                                    }
+                                    break;
+                                default:
+                                    continue;
                             }
                             if (!typeInfos.TryGetValue(symbol.ContainingType, out var typeInfo))
                             {
@@ -281,7 +304,7 @@ namespace Minimal.Mvvm.SourceGenerator
                         switch (group.Key)
                         {
                             case AttributeType.Notify:
-                                NotifyPropertyGenerator.Generate(writer, members.Select(m => m.member), nullableContextOptions);
+                                NotifyPropertyGenerator.Generate(writer, members.Select(m => m.member), compilation);
                                 break;
 
                             case AttributeType.Localize:

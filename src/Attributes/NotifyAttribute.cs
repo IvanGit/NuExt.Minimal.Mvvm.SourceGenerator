@@ -11,7 +11,7 @@
         Private = 1,
     }
 
-    [AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
     internal sealed class NotifyAttribute : Attribute
     {
         public NotifyAttribute()

@@ -6,11 +6,11 @@ using System.Diagnostics;
 
 namespace Minimal.Mvvm.SourceGenerator
 {
-    internal struct NotifyPropertyGenerator
+    internal partial struct NotifyPropertyGenerator
     {
-        internal const string BindableBaseFullyQualifiedMetadataName = "Minimal.Mvvm.BindableBase";
-        internal const string CustomAttributeFullyQualifiedMetadataName = "Minimal.Mvvm.CustomAttributeAttribute";
-        internal const string NotifyAttributeFullyQualifiedMetadataName = "Minimal.Mvvm.NotifyAttribute";
+        internal const string BindableBaseFullyQualifiedName = "Minimal.Mvvm.BindableBase";
+        internal const string CustomAttributeFullyQualifiedName = "global::Minimal.Mvvm.CustomAttributeAttribute";
+        internal const string NotifyAttributeFullyQualifiedName = "Minimal.Mvvm.NotifyAttribute";
 
         private static readonly char[] s_trimChars = { '_' };
 
@@ -23,92 +23,57 @@ namespace Minimal.Mvvm.SourceGenerator
 
         #region Pipeline
 
-        internal static bool Predicate(SyntaxNode attributeTarget, CancellationToken cancellationToken)
+        internal static bool IsValidSyntaxNode(SyntaxNode attributeTarget, CancellationToken cancellationToken)
         {
             _ = cancellationToken;
             //Trace.WriteLine($"pipeline syntaxNode={attributeTarget}");
-            bool result = attributeTarget is VariableDeclaratorSyntax
+            return attributeTarget switch
             {
-                Parent: VariableDeclarationSyntax
-                {
-                    Parent: FieldDeclarationSyntax
-                    {
-                        AttributeLists.Count: > 0, Parent: ClassDeclarationSyntax
-                    }
-                }
+                VariableDeclaratorSyntax v => IsValidVariableDeclarator(v),
+                MethodDeclarationSyntax m => IsValidMethodDeclaration(m),
+                _ => false,
             };
-            return result;
         }
-
-        internal static bool Predicate(Compilation compilation, IFieldSymbol fieldSymbol)
-        {
-            if (fieldSymbol.IsReadOnly)
-            {
-                return false;
-            }
-            var containingType = fieldSymbol.ContainingType;
-            if (containingType == null)
-            {
-                return false;
-            }
-            var baseTypeSymbol = compilation.GetTypeByMetadataName(BindableBaseFullyQualifiedMetadataName);
-            if (baseTypeSymbol == null || !containingType.InheritsFromType(baseTypeSymbol))
-            {
-                return false;
-            }
-            return true;
-        }
-
 
         #endregion
 
         #region Methods
 
-        public static void Generate(IndentedTextWriter writer, IEnumerable<ISymbol> members, NullableContextOptions nullableContextOptions)
+        private static bool IsValidContainingType(Compilation compilation, ITypeSymbol containingType)
         {
+            var baseTypeSymbol = compilation.GetTypeByMetadataName(RemoveGlobalAlias(BindableBaseFullyQualifiedName));
+            return baseTypeSymbol != null && containingType.InheritsFromType(baseTypeSymbol);
+        }
+
+        public static void Generate(IndentedTextWriter writer, IEnumerable<ISymbol> members, Compilation compilation)
+        {
+            var nullableContextOptions = compilation.Options.NullableContextOptions;
             bool isFirst = true;
             foreach (var member in members)
             {
-                if (member is not IFieldSymbol fieldSymbol)
+                switch (member)
                 {
-                    Trace.WriteLine($"{member} is not a IFieldSymbol");
-                    continue;
+                    case IFieldSymbol fieldSymbol:
+                        GenerateForField(writer, fieldSymbol, nullableContextOptions, ref isFirst);
+                        break;
+                    case IMethodSymbol methodSymbol:
+                        GenerateForMethod(writer, methodSymbol, compilation, nullableContextOptions, ref isFirst);
+                        break;
+                    default:
+                        break;
                 }
-                GenerateForMember(writer, fieldSymbol, nullableContextOptions, ref isFirst);
             }
         }
 
-        private static void GenerateForMember(IndentedTextWriter writer, IFieldSymbol fieldSymbol, NullableContextOptions nullableContextOptions, ref bool isFirst)
+        private static void GenerateProperty(IndentedTextWriter writer, string propertyName, string backingFieldName,
+            string fullyQualifiedTypeName, NotifyAttributeData notifyAttributeData, CallbackData callbackData,
+            IEnumerable<CustomAttributeData> customAttributeData, string[]? comment, string nullable, bool generateBackingFieldName, ref bool isFirst)
         {
-            if (fieldSymbol.IsReadOnly)
-            {
-                return;
-            }
-
-            var comment = fieldSymbol.GetComment();
-
-            var attributes = fieldSymbol.GetAttributes();
-
-            var notifyAttribute = GetNotifyAttribute(attributes)!;
-            var notifyAttributeData = GetNotifyAttributeData(notifyAttribute);
-
-            var customAttributes = GetCustomAttributes(attributes);
-            var customAttributeData = GetCustomAttributeData(customAttributes);
-
-            var backingFieldName = fieldSymbol.Name;
-            var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName : GetPropertyName(backingFieldName);
-
-            var fullyQualifiedTypeName = fieldSymbol.Type.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName);
-
-            var callbackData = GetCallbackData(fieldSymbol, fullyQualifiedTypeName, notifyAttributeData);
-
             if (!isFirst)
             {
                 writer.WriteLineNoTabs(string.Empty);
             }
             isFirst = false;
-
-            string nullable = nullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
 
             string? backingCallbackFieldName = null;
             if (callbackData.CallbackName != null)
@@ -121,6 +86,11 @@ namespace Minimal.Mvvm.SourceGenerator
                 }
                 writer.WriteLine($"{nullable} {backingCallbackFieldName};");
                 writer.WriteLineNoTabs(string.Empty);
+            }
+
+            if (generateBackingFieldName)
+            {
+                writer.WriteLine($"private {fullyQualifiedTypeName} {backingFieldName};");
             }
 
             if (comment != null)
@@ -142,7 +112,7 @@ namespace Minimal.Mvvm.SourceGenerator
                 writer.Write("virtual ");
             }*/
             writer.WriteLine($"{fullyQualifiedTypeName} {propertyName}");
-            writer.WriteLine("{");//begin property
+            writer.WriteLine("{"); //begin property
             writer.Indent++;
 
             writer.WriteAccessibility(notifyAttributeData.GetterAccessibility);
@@ -154,15 +124,13 @@ namespace Minimal.Mvvm.SourceGenerator
                 : $"set => SetProperty(ref {backingFieldName}, value);");
 
             writer.Indent--;
-            writer.WriteLine("}");//end property
+            writer.WriteLine("}"); //end property
         }
 
-        private static CallbackData GetCallbackData(IFieldSymbol fieldSymbol, string fullyQualifiedTypeName,
-            NotifyAttributeData notifyAttributeData)
+        private static CallbackData GetCallbackData(INamedTypeSymbol containingType, ITypeSymbol? parameterType, NotifyAttributeData notifyAttributeData)
         {
             if (notifyAttributeData.CallbackName == null) return default;
 
-            var containingType = fieldSymbol.ContainingType;
             var members = containingType.GetMembers(notifyAttributeData.CallbackName);
             if (members.Length == 0)
             {
@@ -174,7 +142,7 @@ namespace Minimal.Mvvm.SourceGenerator
             bool hasParameter;
             foreach (var member in members)
             {
-                if (member is not IMethodSymbol method || !IsCallback(method, fieldSymbol.Type, out hasParameter))
+                if (member is not IMethodSymbol method || !IsCallback(method, parameterType, out hasParameter))
                 {
                     continue;
                 }
@@ -191,14 +159,14 @@ namespace Minimal.Mvvm.SourceGenerator
             return new CallbackData(notifyAttributeData.CallbackName, hasParameter);
         }
 
-        private static bool IsCallback(IMethodSymbol methodSymbol, ITypeSymbol parameterType, out bool hasParameter)
+        private static bool IsCallback(IMethodSymbol methodSymbol, ITypeSymbol? parameterType, out bool hasParameter)
         {
             hasParameter = false;
             if (!methodSymbol.ReturnsVoid) return false;
             var parameters = methodSymbol.Parameters;
             if (parameters.Length > 1) return false;
             hasParameter = parameters.Length == 1;
-            return parameters.Length == 0 || parameterType.IsAssignableFromType(parameters[0].Type);
+            return parameters.Length == 0 || parameterType?.IsAssignableFromType(parameters[0].Type) == true;
         }
 
         private static AttributeData? GetNotifyAttribute(IEnumerable<AttributeData> attributes)
@@ -275,14 +243,12 @@ namespace Minimal.Mvvm.SourceGenerator
                 setterAccessibility = Accessibility.NotApplicable;
             }
 
-            return new NotifyAttributeData(propertyName, callbackName, preferCallbackWithParameter, propertyAccessibility, getterAccessibility,
-                setterAccessibility);
+            return new NotifyAttributeData(propertyName, callbackName, preferCallbackWithParameter, propertyAccessibility, getterAccessibility, setterAccessibility);
         }
 
         private static IEnumerable<AttributeData> GetCustomAttributes(ImmutableArray<AttributeData> attributes)
         {
-            return attributes.Where(x => x.AttributeClass?.ToDisplayString() ==
-                                         CustomAttributeFullyQualifiedMetadataName);
+            return attributes.Where(x => x.AttributeClass?.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) == CustomAttributeFullyQualifiedName);
         }
 
         private static IEnumerable<CustomAttributeData> GetCustomAttributeData(IEnumerable<AttributeData> customAttributes)
@@ -315,15 +281,9 @@ namespace Minimal.Mvvm.SourceGenerator
             return (IEnumerable<CustomAttributeData>?)list ?? Array.Empty<CustomAttributeData>();
         }
 
-        private static string GetPropertyName(string fieldName)
+        private static string RemoveGlobalAlias(string fullyQualifiedMetadataName)
         {
-            var newFieldName = fieldName;
-            if (newFieldName.StartsWith("_"))
-            {
-                newFieldName = newFieldName.TrimStart(s_trimChars);
-            }
-            newFieldName = char.ToUpper(newFieldName[0]) + newFieldName.Substring(1);
-            return newFieldName;
+            return fullyQualifiedMetadataName.StartsWith("global::") ? fullyQualifiedMetadataName.Substring("global::".Length) : fullyQualifiedMetadataName;
         }
 
         #endregion
