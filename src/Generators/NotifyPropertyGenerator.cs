@@ -12,7 +12,7 @@ namespace Minimal.Mvvm.SourceGenerator
         internal const string CustomAttributeFullyQualifiedName = "global::Minimal.Mvvm.CustomAttributeAttribute";
         internal const string NotifyAttributeFullyQualifiedName = "Minimal.Mvvm.NotifyAttribute";
 
-        private static readonly char[] s_trimChars = { '_' };
+        private static readonly char[] s_trimChars = ['_'];
 
         private readonly record struct CallbackData(string? CallbackName, bool HasParameter);
 
@@ -270,7 +270,7 @@ namespace Minimal.Mvvm.SourceGenerator
                                 {
                                     attribute = $"[{attribute}]";
                                 }
-                                list ??= new List<CustomAttributeData>();
+                                list ??= [];
                                 list.Add(new CustomAttributeData(attribute));
                             }
                             break;
@@ -278,7 +278,7 @@ namespace Minimal.Mvvm.SourceGenerator
                 }
             }
 
-            return (IEnumerable<CustomAttributeData>?)list ?? Array.Empty<CustomAttributeData>();
+            return (IEnumerable<CustomAttributeData>?)list ?? [];
         }
 
         private static string RemoveGlobalAlias(string fullyQualifiedMetadataName)

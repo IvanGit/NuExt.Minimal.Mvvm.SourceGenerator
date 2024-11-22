@@ -26,7 +26,7 @@ namespace Minimal.Mvvm.SourceGenerator
 
         #region Sources
 
-        private static readonly (string hintName, string source)[] s_sources = {
+        private static readonly (string hintName, string source)[] s_sources = [
             (hintName : "Minimal.Mvvm.AccessModifier.g.cs", source : """
             /// <summary>
             /// Enum to define access modifiers.
@@ -71,7 +71,8 @@ namespace Minimal.Mvvm.SourceGenerator
             """),
             (hintName : "Minimal.Mvvm.LocalizeAttribute.g.cs", source : """
             using System;
-            
+            using System.Linq;
+
             namespace Minimal.Mvvm
             {
                 /// <summary>
@@ -84,6 +85,14 @@ namespace Minimal.Mvvm.SourceGenerator
                     {
 
                     }
+
+                    public static string StringToValidPropertyName(string key)
+                    {
+                        var s = key.Trim();
+                        var validName = char.IsLetter(s[0]) ? char.ToUpper(s[0]).ToString() : "_";
+                        validName += new string(s.Skip(1).Select(ch => char.IsLetterOrDigit(ch) ? ch : '_').ToArray());
+                        return validName;
+                    }
                 }
             }
             """),
@@ -93,7 +102,7 @@ namespace Minimal.Mvvm.SourceGenerator
             namespace Minimal.Mvvm
             {
                 /// <summary>
-                /// Attribute to mark a field for code generation of property and associated callback methods.
+                /// Attribute to mark a field or method for code generation of property and associated callback methods.
                 /// </summary>
                 [AttributeUsage(AttributeTargets.Field | AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
                 internal sealed class NotifyAttribute : Attribute
@@ -141,7 +150,7 @@ namespace Minimal.Mvvm.SourceGenerator
                 }
             }
             """)
-        };
+        ];
 
         #endregion
 
@@ -150,14 +159,14 @@ namespace Minimal.Mvvm.SourceGenerator
         private static readonly (string fullyQualifiedMetadataName,
             Func<SyntaxNode, CancellationToken, bool> predicate,
             Func<GeneratorAttributeSyntaxContext, CancellationToken, (ISymbol member, ImmutableArray<AttributeData> attributes, AttributeType attributeType)> transform)[] s_pipelines =
-        {
+        [
             (fullyQualifiedMetadataName: NotifyPropertyGenerator.NotifyAttributeFullyQualifiedName,
                 predicate: NotifyPropertyGenerator.IsValidSyntaxNode,
                 transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Notify)),
-            (fullyQualifiedMetadataName: LocalizePropertyGenerator.LocalizeAttributeFullyQualifiedMetadataName,
-                predicate: LocalizePropertyGenerator.Predicate,
+            (fullyQualifiedMetadataName: LocalizePropertyGenerator.LocalizeAttributeFullyQualifiedName,
+                predicate: LocalizePropertyGenerator.IsValidSyntaxNode,
                 transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Localize))
-        };
+        ];
 
         #endregion
 
@@ -229,18 +238,18 @@ namespace Minimal.Mvvm.SourceGenerator
                             }
                             if (!typeInfos.TryGetValue(symbol.ContainingType, out var typeInfo))
                             {
-                                typeInfos[symbol.ContainingType] = typeInfo = new();
+                                typeInfos[symbol.ContainingType] = typeInfo = [];
                             }
                             typeInfo.Add(item);
                             break;
                         case AttributeType.Localize:
-                            if (symbol is not INamedTypeSymbol typeSymbol || !LocalizePropertyGenerator.Predicate(compilation, typeSymbol, attributes, additionalTexts))
+                            if (symbol is not INamedTypeSymbol typeSymbol || !LocalizePropertyGenerator.IsValidType(typeSymbol, attributes, additionalTexts))
                             {
                                 continue;
                             }
                             if (!typeInfos.TryGetValue(typeSymbol, out typeInfo))
                             {
-                                typeInfos[typeSymbol] = typeInfo = new();
+                                typeInfos[typeSymbol] = typeInfo = [];
                             }
                             typeInfo.Add(item);
                             break;
@@ -308,7 +317,7 @@ namespace Minimal.Mvvm.SourceGenerator
                                 break;
 
                             case AttributeType.Localize:
-                                LocalizePropertyGenerator.Generate(writer, members.Select(m => (m.member, m.attributes)), additionalTexts, nullableContextOptions);
+                                LocalizePropertyGenerator.Generate(writer, members.Select(m => (m.member, m.attributes)), additionalTexts);
                                 break;
                         }
                     }

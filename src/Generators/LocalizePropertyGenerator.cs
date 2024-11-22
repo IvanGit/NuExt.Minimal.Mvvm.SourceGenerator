@@ -10,23 +10,24 @@ namespace Minimal.Mvvm.SourceGenerator
 {
     internal struct LocalizePropertyGenerator
     {
-        internal const string LocalizeAttributeFullyQualifiedMetadataName = "Minimal.Mvvm.LocalizeAttribute";
+        internal const string LocalizeAttributeFullyQualifiedName = "Minimal.Mvvm.LocalizeAttribute";
 
         private readonly record struct LocalizeAttributeData(string? JsonFileName);
 
         #region Pipeline
 
-        internal static bool Predicate(SyntaxNode attributeTarget, CancellationToken cancellationToken)
+        internal static bool IsValidSyntaxNode(SyntaxNode attributeTarget, CancellationToken cancellationToken)
         {
             _ = cancellationToken;
             //Trace.WriteLine($"pipeline syntaxNode={attributeTarget}");
             return attributeTarget is ClassDeclarationSyntax;
         }
 
-        public static bool Predicate(Compilation compilation, ITypeSymbol typeSymbol,
+        public static bool IsValidType(ITypeSymbol typeSymbol,
             ImmutableArray<AttributeData> attributes,
             ImmutableArray<(string name, AdditionalText text)> additionalTexts)
         {
+            _ = typeSymbol;
             var localizeAttribute = GetLocalizeAttribute(attributes);
             if (localizeAttribute == null)
             {
@@ -46,7 +47,7 @@ namespace Minimal.Mvvm.SourceGenerator
 
         #region Methods
 
-        public static void Generate(IndentedTextWriter writer, IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> members, ImmutableArray<(string name, AdditionalText text)> additionalTexts, NullableContextOptions nullableContextOptions)
+        public static void Generate(IndentedTextWriter writer, IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> members, ImmutableArray<(string name, AdditionalText text)> additionalTexts)
         {
             foreach (var (member, attributes) in members)
             {
@@ -55,15 +56,15 @@ namespace Minimal.Mvvm.SourceGenerator
                     Trace.WriteLine($"{member} is not a ITypeSymbol");
                     continue;
                 }
-                GenerateForMember(writer, typeSymbol, attributes, additionalTexts, nullableContextOptions);
+                GenerateForMember(writer, typeSymbol, attributes, additionalTexts);
             }
         }
 
         private static void GenerateForMember(IndentedTextWriter writer, ITypeSymbol typeSymbol,
             ImmutableArray<AttributeData> attributes,
-            ImmutableArray<(string name, AdditionalText text)> additionalTexts,
-            NullableContextOptions nullableContextOptions)
+            ImmutableArray<(string name, AdditionalText text)> additionalTexts)
         {
+            _ = typeSymbol;
             var localizeAttribute = GetLocalizeAttribute(attributes)!;
             var localizeAttributeData = GetLocalizeAttributeData(localizeAttribute);
             var jsonFileName = Path.GetFileName(localizeAttributeData.JsonFileName);

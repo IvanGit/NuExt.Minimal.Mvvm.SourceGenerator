@@ -4,7 +4,10 @@
 
 ### Features
 
-- Automatically generates boilerplate code for ViewModels.
+- Automatically generates boilerplate code for ViewModels:
+  - Generates properties with notification change support.
+  - Creates command properties for appropriate methods.
+  - Generates static localization classes from JSON files.
 - Simplifies the development process by reducing repetitive coding tasks.
 - Seamlessly integrates with the NuExt.Minimal.Mvvm framework.
 - Enhances maintainability and readability of your codebase.
@@ -50,6 +53,7 @@ Given a user class such as:
 
 ```csharp
 using Minimal.Mvvm;
+using System.Threading.Tasks;
 
 public partial class MyModel : BindableBase
 {
@@ -58,6 +62,16 @@ public partial class MyModel : BindableBase
 
     [Notify(Setter = AccessModifier.Private)]
     private string _name;
+
+    /// <summary>
+    /// Opens file.
+    /// </summary>
+    [Notify("OpenFileCommand", Setter = AccessModifier.Private)]
+    [CustomAttribute("System.Text.Json.Serialization.JsonIgnore")]
+    private async Task OpenAsync(string filePath)
+    {
+        await Task.Delay(1000);
+    }
 }
 ```
 
@@ -77,10 +91,21 @@ partial class MyModel
         get => _name;
         private set => SetProperty(ref _name, value);
     }
+
+    private IAsyncCommand<string>? _openFileCommand;
+    /// <summary>
+    /// Opens file.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public IAsyncCommand<string>? OpenFileCommand
+    {
+        get => _openFileCommand;
+        private set => SetProperty(ref _openFileCommand, value);
+    }
 }
 ```
 
-This example demonstrates how the source generator automatically creates properties with notification changes for fields marked with the `[Notify]` attribute, thereby reducing boilerplate code.
+This example demonstrates how the source generator automatically creates properties with notification changes for fields and methods marked with the `[Notify]` attribute, thereby reducing boilerplate code.
 
 ### Contributing
 
