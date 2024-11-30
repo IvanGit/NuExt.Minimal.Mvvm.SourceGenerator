@@ -3,6 +3,19 @@
     internal class NotifyAttributeTests : SourceGeneratorTestBase
     {
         [Test]
+        public void NotifyAttributeAlsoNotifyAttributesTest()
+        {
+            var sources = AlsoNotifyAttributes.Sources;
+
+            foreach (var (source, expected) in sources)
+            {
+                var compilation = Compile(source);
+                var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation);
+                MultipleAssert(outputCompilation, diagnostics, generatorResult, GetExpectedSource(expected));
+            }
+        }
+
+        [Test]
         public void NotifyAttributePropertyNamesTest()
         {
             var sources = PropertyNames.Sources;

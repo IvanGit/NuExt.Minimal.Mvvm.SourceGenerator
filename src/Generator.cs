@@ -19,6 +19,7 @@ namespace Minimal.Mvvm.SourceGenerator
         private enum AttributeType
         {
             Notify,
+            NotifyDataErrorInfo,
             Localize
         }
 
@@ -76,11 +77,15 @@ namespace Minimal.Mvvm.SourceGenerator
             namespace Minimal.Mvvm
             {
                 /// <summary>
-                /// Specifies that the target class should be localized using the provided JSON file.
+                /// Specifies that the target class should be localized using the provided JSON file. JSON file should be specified in AdditionalFiles.
                 /// </summary>
                 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
                 internal sealed class LocalizeAttribute : Attribute
                 {
+                    /// <summary>
+                    /// Initializes a new instance of the <see cref="LocalizeAttribute"/> class with the specified JSON file name.
+                    /// </summary>
+                    /// <param name="jsonFileName">The JSON file name.</param>
                     public LocalizeAttribute(string jsonFileName)
                     {
 
@@ -149,7 +154,55 @@ namespace Minimal.Mvvm.SourceGenerator
                     public AccessModifier Setter { get; set; }
                 }
             }
-            """)
+            """),
+             (hintName : "Minimal.Mvvm.AlsoNotifyAttribute.g.cs", source : """
+            using System;
+
+            namespace Minimal.Mvvm
+            {
+                /// <summary>
+                /// Attribute to specify additional properties to notify when the annotated property changes.
+                /// </summary>
+                [AttributeUsage(AttributeTargets.Field | AttributeTargets.Method, Inherited = false, AllowMultiple = true)]
+                internal sealed class AlsoNotifyAttribute : Attribute
+                {
+                    /// <summary>
+                    /// Initializes a new instance of the <see cref="AlsoNotifyAttribute"/> class with the specified property names.
+                    /// </summary>
+                    /// <param name="propertyNames">The names of the properties to notify.</param>
+                    public AlsoNotifyAttribute(params string[] propertyNames)
+                    {
+                        PropertyNames = propertyNames;
+                    }
+
+                    /// <summary>
+                    /// Gets the names of the properties to notify.
+                    /// </summary>
+                    public string[] PropertyNames { get; }
+                }
+            }
+            """),
+             (hintName : "Minimal.Mvvm.NotifyDataErrorInfoAttribute.g.cs", source : """
+            using System;
+
+            namespace Minimal.Mvvm
+            {
+                /// <summary>
+                /// Attribute to mark a class for code generation if it inherited from <see cref="System.ComponentModel.INotifyDataErrorInfo"/> .
+                /// </summary>
+                [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+                internal sealed class NotifyDataErrorInfoAttribute : Attribute
+                {
+                    /// <summary>
+                    /// Initializes a new instance of the <see cref="NotifyDataErrorInfoAttribute"/> class.
+                    /// </summary>
+                    public NotifyDataErrorInfoAttribute()
+                    {
+
+                    }
+                }
+            }
+            """),
         ];
 
         #endregion
@@ -163,6 +216,9 @@ namespace Minimal.Mvvm.SourceGenerator
             (fullyQualifiedMetadataName: NotifyPropertyGenerator.NotifyAttributeFullyQualifiedName,
                 predicate: NotifyPropertyGenerator.IsValidSyntaxNode,
                 transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Notify)),
+            (fullyQualifiedMetadataName: NotifyDataErrorInfoGenerator.NotifyDataErrorInfoAttributeFullyQualifiedName,
+                predicate: NotifyDataErrorInfoGenerator.IsValidSyntaxNode,
+                transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.NotifyDataErrorInfo)),
             (fullyQualifiedMetadataName: LocalizePropertyGenerator.LocalizeAttributeFullyQualifiedName,
                 predicate: LocalizePropertyGenerator.IsValidSyntaxNode,
                 transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Localize))
@@ -242,6 +298,17 @@ namespace Minimal.Mvvm.SourceGenerator
                             }
                             typeInfo.Add(item);
                             break;
+                        case AttributeType.NotifyDataErrorInfo:
+                            if (symbol is not INamedTypeSymbol namedTypeSymbol || !NotifyDataErrorInfoGenerator.IsValidType(compilation, namedTypeSymbol, attributes))
+                            {
+                                continue;
+                            }
+                            if (!typeInfos.TryGetValue(namedTypeSymbol, out typeInfo))
+                            {
+                                typeInfos[namedTypeSymbol] = typeInfo = [];
+                            }
+                            typeInfo.Add(item);
+                            break;
                         case AttributeType.Localize:
                             if (symbol is not INamedTypeSymbol typeSymbol || !LocalizePropertyGenerator.IsValidType(typeSymbol, attributes, additionalTexts))
                             {
@@ -272,7 +339,7 @@ namespace Minimal.Mvvm.SourceGenerator
                         containingNamespace = @namespace.ToDisplayString(SymbolDisplayFormats.Namespace);
                     }
 
-                    Debug.Assert(sb.Length == 0);
+                    sb.Clear();
                     using var writer = new IndentedTextWriter(new StringWriter(sb));
                     writer.WriteLine($"""
                     // <auto-generated>
@@ -308,16 +375,24 @@ namespace Minimal.Mvvm.SourceGenerator
                         writer.Indent++;
                     }
 
+                    bool isFirst = true;
                     foreach (var group in members.GroupBy(m => m.attributeType))
                     {
                         switch (group.Key)
                         {
                             case AttributeType.Notify:
-                                NotifyPropertyGenerator.Generate(writer, members.Select(m => m.member), compilation);
+                                NotifyPropertyGenerator.Generate(writer, group.Select(m => m.member), compilation, ref isFirst);
+                                break;
+
+                            case AttributeType.NotifyDataErrorInfo:
+                                NotifyDataErrorInfoGenerator.Generate(writer, group.Select(m => m.member), compilation, ref isFirst);
                                 break;
 
                             case AttributeType.Localize:
-                                LocalizePropertyGenerator.Generate(writer, members.Select(m => (m.member, m.attributes)), additionalTexts);
+                                LocalizePropertyGenerator.Generate(writer, group.Select(m => (m.member, m.attributes)), additionalTexts, ref isFirst);
+                                break;
+
+                            default:
                                 break;
                         }
                     }
@@ -335,8 +410,8 @@ namespace Minimal.Mvvm.SourceGenerator
                     }
 
                     var sourceText = sb.ToString();
-                    sb.Clear();
 
+                    sb.Clear();
                     sb.Append(containingType.ToDisplayString(SymbolDisplayFormats.GeneratedFileName));
                     if (containingType.Arity > 0)
                     {
@@ -345,7 +420,6 @@ namespace Minimal.Mvvm.SourceGenerator
                     }
                     sb.Append(".g.cs");
                     var generatedFileName = sb.ToString();
-                    sb.Clear();
 
                     context.AddSource(generatedFileName, sourceText);
                 }// foreach (var pair in typeInfos)

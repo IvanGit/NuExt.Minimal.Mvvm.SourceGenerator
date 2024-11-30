@@ -47,7 +47,7 @@ namespace Minimal.Mvvm.SourceGenerator
 
         #region Methods
 
-        public static void Generate(IndentedTextWriter writer, IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> members, ImmutableArray<(string name, AdditionalText text)> additionalTexts)
+        public static void Generate(IndentedTextWriter writer, IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> members, ImmutableArray<(string name, AdditionalText text)> additionalTexts, ref bool isFirst)
         {
             foreach (var (member, attributes) in members)
             {
@@ -56,13 +56,13 @@ namespace Minimal.Mvvm.SourceGenerator
                     Trace.WriteLine($"{member} is not a ITypeSymbol");
                     continue;
                 }
-                GenerateForMember(writer, typeSymbol, attributes, additionalTexts);
+                GenerateForMember(writer, typeSymbol, attributes, additionalTexts, ref isFirst);
             }
         }
 
         private static void GenerateForMember(IndentedTextWriter writer, ITypeSymbol typeSymbol,
             ImmutableArray<AttributeData> attributes,
-            ImmutableArray<(string name, AdditionalText text)> additionalTexts)
+            ImmutableArray<(string name, AdditionalText text)> additionalTexts, ref bool isFirst)
         {
             _ = typeSymbol;
             var localizeAttribute = GetLocalizeAttribute(attributes)!;
@@ -87,7 +87,6 @@ namespace Minimal.Mvvm.SourceGenerator
                 return;
             }
 
-            bool isFirst = true;
             foreach (var pair in translations)
             {
                 if (!isFirst)

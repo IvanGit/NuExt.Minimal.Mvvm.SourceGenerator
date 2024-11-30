@@ -12,6 +12,13 @@
 - Seamlessly integrates with the NuExt.Minimal.Mvvm framework.
 - Enhances maintainability and readability of your codebase.
 
+### Commonly Used Types
+
+- **`Minimal.Mvvm.NotifyAttribute`**: Generates a property for a backing field or a command for a method.
+- **`Minimal.Mvvm.AlsoNotifyAttribute`**: Notifies additional properties  when the annotated property changes.
+- **`Minimal.Mvvm.LocalizeAttribute`**: Localizes the target class using the provided JSON file.
+- **`Minimal.Mvvm.CustomAttributeAttribute`**: Specifies a fully qualified attribute name to be applied to a generated property.
+
 ### Installation
 
 You can install `NuExt.Minimal.Mvvm.SourceGenerator` via [NuGet](https://www.nuget.org/):
@@ -55,20 +62,25 @@ Given a user class such as:
 using Minimal.Mvvm;
 using System.Threading.Tasks;
 
-public partial class MyModel : BindableBase
+public partial class PersonModel : BindableBase
 {
-    [Notify]
-    private string? _description;
+    [Notify, AlsoNotify(nameof(FullName))]
+    private string? _name;
 
-    [Notify(Setter = AccessModifier.Private)]
-    private string _name;
+    [Notify, AlsoNotify(nameof(FullName))]
+    private string? _surname;
+
+    [Notify, AlsoNotify(nameof(FullName))]
+    private string? _middleName;
+
+    public string FullName => $"{Surname} {Name} {MiddleName}";
 
     /// <summary>
-    /// Opens file.
+    /// Shows information.
     /// </summary>
-    [Notify("OpenFileCommand", Setter = AccessModifier.Private)]
+    [Notify("ShowInfoCommand", Setter = AccessModifier.Private)]
     [CustomAttribute("System.Text.Json.Serialization.JsonIgnore")]
-    private async Task OpenAsync(string filePath)
+    private async Task ShowAsync(string fullName)
     {
         await Task.Delay(1000);
     }
@@ -78,29 +90,53 @@ public partial class MyModel : BindableBase
 The generator could produce the following:
 
 ```csharp
-partial class MyModel
+partial class PersonModel
 {
-    public string? Description
-    {
-        get => _description;
-        set => SetProperty(ref _description, value);
-    }
-
-    public string Name
+    public string? Name
     {
         get => _name;
-        private set => SetProperty(ref _name, value);
+        set
+        {
+            if (SetProperty(ref _name, value))
+            {
+                RaisePropertyChanged("FullName");
+            }
+        }
     }
 
-    private IAsyncCommand<string>? _openFileCommand;
+    public string? Surname
+    {
+        get => _surname;
+        set
+        {
+            if (SetProperty(ref _surname, value))
+            {
+                RaisePropertyChanged("FullName");
+            }
+        }
+    }
+
+    public string? MiddleName
+    {
+        get => _middleName;
+        set
+        {
+            if (SetProperty(ref _middleName, value))
+            {
+                RaisePropertyChanged("FullName");
+            }
+        }
+    }
+
+    private IAsyncCommand<string>? _showInfoCommand;
     /// <summary>
-    /// Opens file.
+    /// Shows information.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public IAsyncCommand<string>? OpenFileCommand
+    public IAsyncCommand<string>? ShowInfoCommand
     {
-        get => _openFileCommand;
-        private set => SetProperty(ref _openFileCommand, value);
+        get => _showInfoCommand;
+        private set => SetProperty(ref _showInfoCommand, value);
     }
 }
 ```

@@ -5,7 +5,9 @@ namespace Minimal.Mvvm.SourceGenerator
     internal static class SymbolDisplayFormats
     {
         internal static SymbolDisplayFormat FullyQualifiedTypeName = SymbolDisplayFormat.FullyQualifiedFormat
-            .WithMiscellaneousOptions(SymbolDisplayFormat.FullyQualifiedFormat.MiscellaneousOptions | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+            .WithMiscellaneousOptions(SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers
+                                      | SymbolDisplayMiscellaneousOptions.UseSpecialTypes
+                                      | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
         internal static SymbolDisplayFormat GeneratedFileName = new(
             globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted, 

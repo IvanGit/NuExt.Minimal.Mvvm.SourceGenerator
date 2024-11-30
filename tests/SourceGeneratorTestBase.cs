@@ -43,7 +43,7 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
         protected static List<string> GetSourceLines(string generatedSource)
         {
             var result = new List<string>();
-            foreach (var line in generatedSource.Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries))
+            foreach (var line in generatedSource.Split(["\r\n", "\n"], StringSplitOptions.RemoveEmptyEntries))
             {
                 if (string.IsNullOrWhiteSpace(line))
                 {
@@ -63,21 +63,21 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 
             if (expectedSource == null)
             {
-                Assert.That(outputCompilation!.SyntaxTrees.Length, Is.EqualTo(5));
+                Assert.That(outputCompilation!.SyntaxTrees.Length, Is.EqualTo(7));
                 Assert.That(diagnostics.IsEmpty, Is.True);// there were no diagnostics created by the generators
                 Assert.That(generatorResult.Diagnostics.IsEmpty, Is.True);
-                Assert.That(generatorResult.GeneratedSources.Length, Is.EqualTo(4));
-                Assert.That(generatorResult.Exception is null);
+                Assert.That(generatorResult.GeneratedSources.Length, Is.EqualTo(6));
+                Assert.That(generatorResult.Exception, Is.Null);
                 return;
             }
 
-            Assert.That(outputCompilation!.SyntaxTrees.Length, Is.EqualTo(6));
+            Assert.That(outputCompilation!.SyntaxTrees.Length, Is.EqualTo(8));
             Assert.That(diagnostics.IsEmpty, Is.True);// there were no diagnostics created by the generators
             var allDiagnostics = outputCompilation.GetDiagnostics();
             Assert.That(allDiagnostics.IsEmpty, Is.True); // verify the compilation with the added source has no diagnostics
 
             Assert.That(generatorResult.Diagnostics.IsEmpty);
-            Assert.That(generatorResult.GeneratedSources.Length, Is.EqualTo(5));
+            Assert.That(generatorResult.GeneratedSources.Length, Is.EqualTo(7));
             Assert.That(generatorResult.Exception, Is.Null);
 
             var generatedSource = generatorResult.GeneratedSources.Last().SyntaxTree.ToString();

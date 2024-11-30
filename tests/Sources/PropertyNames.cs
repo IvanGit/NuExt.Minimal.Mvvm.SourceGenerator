@@ -1,15 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
+﻿namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 {
     internal static class PropertyNames
     {
-        public static List<(string source, string? expected)> Sources = new()
-        {
+        public static List<(string source, string? expected)> Sources =
+        [
             (
                 source : """
                 using Minimal.Mvvm;
@@ -54,6 +48,6 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
                     }
                 }
                 """ ),
-        };
+        ];
     }
 }

@@ -61,6 +61,9 @@ namespace Minimal.Mvvm.SourceGenerator
             var customAttributes = GetCustomAttributes(attributes);
             var customAttributeData = GetCustomAttributeData(customAttributes);
 
+            var alsoNotifyAttributes = GetAlsoNotifyAttributes(attributes);
+            var alsoNotifyAttributeData = GetAlsoNotifyAttributeData(alsoNotifyAttributes);
+
             var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromMethodName(methodSymbol.Name);
 
             var backingFieldName = GetBackingFieldNameFromPropertyName(propertyName);
@@ -72,7 +75,7 @@ namespace Minimal.Mvvm.SourceGenerator
             string nullable = nullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
             var fullyQualifiedTypeName = $"{propertyType?.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName)}{nullable}";
 
-            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, comment, nullable, true, ref isFirst);
+            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, comment, nullable, true, ref isFirst);
         }
 
         private static INamedTypeSymbol? GetCommandTypeName(Compilation compilation, IMethodSymbol methodSymbol)
@@ -80,10 +83,10 @@ namespace Minimal.Mvvm.SourceGenerator
             var parameters = methodSymbol.Parameters;
             if (parameters.Length == 0)
             {
-                return compilation.GetTypeByMetadataName(methodSymbol.ReturnsVoid ? $"System.Windows.Input.ICommand" : $"Minimal.Mvvm.IAsyncCommand");
+                return compilation.GetTypeByMetadataName(methodSymbol.ReturnsVoid ? "System.Windows.Input.ICommand" : "Minimal.Mvvm.IAsyncCommand");
             }
 
-            var genericCommandType = compilation.GetTypeByMetadataName(methodSymbol.ReturnsVoid ? $"Minimal.Mvvm.ICommand`1" : $"Minimal.Mvvm.IAsyncCommand`1");
+            var genericCommandType = compilation.GetTypeByMetadataName(methodSymbol.ReturnsVoid ? "Minimal.Mvvm.ICommand`1" : "Minimal.Mvvm.IAsyncCommand`1");
 
             if (genericCommandType != null)
             {

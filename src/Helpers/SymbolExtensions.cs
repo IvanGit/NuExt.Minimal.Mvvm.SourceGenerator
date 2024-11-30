@@ -1,13 +1,11 @@
 ﻿using Microsoft.CodeAnalysis;
-using System.Linq;
 using System.Xml;
-using System.Xml.Linq;
 
 namespace Minimal.Mvvm.SourceGenerator
 {
     public static class SymbolExtensions
     {
-        private static readonly char[] s_xmlSplitChars = { '\n' };
+        private static readonly char[] s_xmlSplitChars = ['\n'];
 
         public static string[]? GetComment(this ISymbol symbol)
         {

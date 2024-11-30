@@ -44,6 +44,9 @@ namespace Minimal.Mvvm.SourceGenerator
             var customAttributes = GetCustomAttributes(attributes);
             var customAttributeData = GetCustomAttributeData(customAttributes);
 
+            var alsoNotifyAttributes = GetAlsoNotifyAttributes(attributes);
+            var alsoNotifyAttributeData = GetAlsoNotifyAttributeData(alsoNotifyAttributes);
+
             var backingFieldName = fieldSymbol.Name;
             var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromFieldName(backingFieldName);
 
@@ -55,7 +58,7 @@ namespace Minimal.Mvvm.SourceGenerator
 
             string nullable = nullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
 
-            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, comment, nullable, false, ref isFirst);
+            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, comment, nullable, false, ref isFirst);
         }
 
         private static string GetPropertyNameFromFieldName(string backingFieldName)

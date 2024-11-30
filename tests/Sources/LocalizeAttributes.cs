@@ -2,9 +2,10 @@
 {
     internal static class LocalizeAttributes
     {
-        public static List<(string source, string? expected)> Sources = new()
-        {
-            (source : """
+        public static List<(string source, string? expected)> Sources =
+        [
+            (
+                source : """
                 using Minimal.Mvvm;
 
                 [Localize("local.en-US.json")]
@@ -42,6 +43,6 @@
                     public static string Name { get; set; } = "My Name";
                 }
                 """ ),
-        };
+        ];
     }
 }

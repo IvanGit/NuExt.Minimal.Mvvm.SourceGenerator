@@ -2,8 +2,8 @@
 {
     internal static class CustomAttributes
     {
-        public static List<(string source, string? expected)> Sources = new()
-        {
+        public static List<(string source, string? expected)> Sources =
+        [
             (
                 source : """
                 using Minimal.Mvvm;
@@ -49,6 +49,6 @@
                     }
                 }
                 """ ),
-        };
+        ];
     }
 }
