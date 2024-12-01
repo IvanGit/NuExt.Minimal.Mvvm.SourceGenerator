@@ -19,8 +19,7 @@ namespace Minimal.Mvvm.SourceGenerator
             return attributeTarget is ClassDeclarationSyntax;
         }
 
-        public static bool IsValidType(Compilation compilation, ITypeSymbol typeSymbol,
-            ImmutableArray<AttributeData> attributes)
+        public static bool IsValidType(Compilation compilation, ITypeSymbol typeSymbol)
         {
             var baseTypeSymbol = compilation.GetTypeByMetadataName("System.ComponentModel.INotifyDataErrorInfo");
             if (baseTypeSymbol == null || !typeSymbol.ImplementsInterface(baseTypeSymbol))
@@ -64,35 +63,51 @@ namespace Minimal.Mvvm.SourceGenerator
             }
             isFirst = false;
 
-            foreach (var line in lines)
+            var originalIndent = writer.Indent;
+            try
             {
-                writer.WriteLine(line);//HACK
+                foreach (var (indent, length, line) in lines)
+                {
+                    if (length == 0)
+                    {
+                        writer.WriteLineNoTabs(string.Empty);
+                        continue;
+                    }
+                    writer.Indent = originalIndent + indent;
+                    writer.WriteLine(line);
+                }
+            }
+            finally
+            {
+                writer.Indent = originalIndent;
             }
         }
 
-        private static string[] GetSourceLines(string source)
+        private static List<(int indent, int length, string line)> GetSourceLines(string source)
         {
             var lines = source.Split(s_newLineSeparators, StringSplitOptions.None);
+            var (leadingWhitespace, leadingWhitespaceLength) = TextUtils.GetLeadingWhitespace(lines[0]);
 
-            string leadingWhitespace = "";
-            for (int i = 0; i < lines[0].Length; i++)
+            var list = new List<(int indent, int length, string line)>();
+            for (int i = 0; i < lines.Length; i++)
             {
-                if (lines[0][i] == ' ') continue;
-                leadingWhitespace = lines[0].Substring(0, i);
-                break;
-            }
-            int leadingWhitespaceLength = leadingWhitespace.Length;
-            if (leadingWhitespaceLength > 0)
-            {
-                for (int i = 0; i < lines.Length; i++)
+                if (leadingWhitespaceLength > 0 && lines[i].StartsWith(leadingWhitespace))
                 {
-                    if (lines[i].StartsWith(leadingWhitespace))
-                    {
-                        lines[i] = lines[i].Substring(leadingWhitespaceLength);
-                    }
+                    lines[i] = lines[i].Substring(leadingWhitespaceLength);
                 }
+                int indent = 0;
+                int length = 0;
+                if (!string.IsNullOrWhiteSpace(lines[i]))
+                {
+                    var spaceCount = TextUtils.GetSpaceCount(lines[i]);
+                    Debug.Assert(spaceCount % 4 == 0);
+                    indent = spaceCount / 4;
+                    lines[i] = lines[i].Trim();
+                    length = lines[i].Length;
+                }
+                list.Add((indent, length, lines[i]));
             }
-            return lines;
+            return list;
         }
 
         #endregion
@@ -225,7 +240,7 @@ namespace Minimal.Mvvm.SourceGenerator
                 {
                     return;
                 }
-            
+
                 (_validationErrors ??= []).AddOrUpdate(
                     propertyName,
                     addValueFactory: key => [error],
@@ -234,7 +249,7 @@ namespace Minimal.Mvvm.SourceGenerator
                         errors.Add(error);
                         return errors;
                     });
-            
+
                 OnErrorsChanged(propertyName);
             }
 
@@ -253,7 +268,7 @@ namespace Minimal.Mvvm.SourceGenerator
                 {
                     return;
                 }
-            
+
                 if (_validationTasks?.TryRemove(propertyName, out var oldValidation) == true)
                 {
                     var (_, oldCts) = oldValidation;
@@ -266,7 +281,7 @@ namespace Minimal.Mvvm.SourceGenerator
                         //do nothing
                     }
                 }
-            
+
                 (_validationTasks ??= [])[propertyName] = (task, cts);
             }
 
@@ -294,7 +309,6 @@ namespace Minimal.Mvvm.SourceGenerator
             public bool HasErrors => _validationErrors != null && System.Linq.Enumerable.Any(_validationErrors, (pair => pair.Value is { Count: > 0 }));
 
             #endregion
-            
             """;
     }
 }

@@ -7,11 +7,12 @@
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <IncludeSymbols>false</IncludeSymbols>
+    <DevelopmentDependency>true</DevelopmentDependency>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageTags>nuext;minimal;mvvm;wpf;ui;windows;viewmodel;command;relaycommand;asynccommand;sourcegenerator;generator;async</PackageTags>
     <Description>This package allows you to generate boilerplate code at compile time specifically for ViewModels using the Minimal MVVM Framework, thereby streamlining your development process and reducing repetitive tasks.</Description>
-    <Version>0.2.6</Version>
+    <Version>0.2.7</Version>
     <RootNamespace>Minimal.Mvvm.SourceGenerator</RootNamespace>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>logo128.png</PackageIcon>

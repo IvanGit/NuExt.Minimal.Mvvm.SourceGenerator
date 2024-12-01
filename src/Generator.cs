@@ -299,7 +299,7 @@ namespace Minimal.Mvvm.SourceGenerator
                             typeInfo.Add(item);
                             break;
                         case AttributeType.NotifyDataErrorInfo:
-                            if (symbol is not INamedTypeSymbol namedTypeSymbol || !NotifyDataErrorInfoGenerator.IsValidType(compilation, namedTypeSymbol, attributes))
+                            if (symbol is not INamedTypeSymbol namedTypeSymbol || !NotifyDataErrorInfoGenerator.IsValidType(compilation, namedTypeSymbol))
                             {
                                 continue;
                             }

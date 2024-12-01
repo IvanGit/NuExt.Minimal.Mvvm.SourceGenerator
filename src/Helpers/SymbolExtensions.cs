@@ -36,14 +36,7 @@ namespace Minimal.Mvvm.SourceGenerator
                 return null;
             }
 
-            string leadingWhitespace = "";
-            for (int i = 0; i < lines[0].Length; i++)
-            {
-                if (lines[0][i] == ' ') continue;
-                leadingWhitespace = lines[0].Substring(0, i);
-                break;
-            }
-            int leadingWhitespaceLength = leadingWhitespace.Length;
+            var (leadingWhitespace, leadingWhitespaceLength) = TextUtils.GetLeadingWhitespace(lines[0]);
             if (leadingWhitespaceLength == 0) return lines;
 
             for (int i = 0; i < lines.Length; i++)
