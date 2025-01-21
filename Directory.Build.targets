@@ -1,0 +1,15 @@
+<Project>
+
+  <ItemGroup>
+    <Compile Update="**\*.EventArgsCache.cs">
+      <DependentUpon>$([System.String]::Copy('%(Filename)').Replace('.EventArgsCache', '.cs'))</DependentUpon>
+    </Compile>
+    <Compile Update="**\*.Field.cs">
+      <DependentUpon>$([System.String]::Copy('%(Filename)').Replace('.Field', '.cs'))</DependentUpon>
+    </Compile>
+    <Compile Update="**\*.Method.cs">
+      <DependentUpon>$([System.String]::Copy('%(Filename)').Replace('.Method', '.cs'))</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+</Project>

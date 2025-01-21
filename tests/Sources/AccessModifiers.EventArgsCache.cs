@@ -2,7 +2,7 @@
 {
     internal static partial class AccessModifiers
     {
-        public static List<(string source, string? expected)> Sources =
+        public static List<(string source, string? expected)> EventArgsCacheSources =
         [
             (
                 source : """
@@ -45,13 +45,13 @@
                     public string Name
                     {
                         get => _name;
-                        set => SetProperty(ref _name, value);
+                        set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                     }
 
                     public string? Description
                     {
                         get => _description;
-                        set => SetProperty(ref _description, value);
+                        set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.DescriptionPropertyChanged);
                     }
                 }
                 """ ),
@@ -80,13 +80,13 @@
                     public string Name
                     {
                         get => _name;
-                        private set => SetProperty(ref _name, value);
+                        private set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                     }
 
                     internal string? Description
                     {
                         get => _description;
-                        set => SetProperty(ref _description, value);
+                        set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.DescriptionPropertyChanged);
                     }
                 }
                 """),
@@ -115,13 +115,13 @@
                     public string Name
                     {
                         get => _name;
-                        protected internal set => SetProperty(ref _name, value);
+                        protected internal set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                     }
 
                     internal string? Description
                     {
                         get => _description;
-                        private set => SetProperty(ref _description, value);
+                        private set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.DescriptionPropertyChanged);
                     }
                 }
                 """),
@@ -150,13 +150,13 @@
                     protected internal string Name
                     {
                         private get => _name;
-                        set => SetProperty(ref _name, value);
+                        set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                     }
 
                     internal string? Description
                     {
                         get => _description;
-                        private protected set => SetProperty(ref _description, value);
+                        private protected set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.DescriptionPropertyChanged);
                     }
                 }
                 """),
@@ -185,13 +185,13 @@
                     private string Name
                     {
                         get => _name;
-                        set => SetProperty(ref _name, value);
+                        set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                     }
 
                     internal string? Description
                     {
                         private get => _description;
-                        set => SetProperty(ref _description, value);
+                        set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.DescriptionPropertyChanged);
                     }
                 }
                 """),
@@ -220,13 +220,13 @@
                     public string Name
                     {
                         private get => _name;
-                        set => SetProperty(ref _name, value);
+                        set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                     }
 
                     private protected string? Description
                     {
                         private get => _description;
-                        set => SetProperty(ref _description, value);
+                        set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.DescriptionPropertyChanged);
                     }
                 }
                 """),
@@ -255,13 +255,13 @@
                     protected internal string Name
                     {
                         get => _name;
-                        protected set => SetProperty(ref _name, value);
+                        protected set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                     }
 
                     protected internal string? Description
                     {
                         get => _description;
-                        internal set => SetProperty(ref _description, value);
+                        internal set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.DescriptionPropertyChanged);
                     }
                 }
                 """),
@@ -290,13 +290,13 @@
                     protected internal string Name
                     {
                         get => _name;
-                        protected set => SetProperty(ref _name, value);
+                        protected set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                     }
 
                     protected internal string? Description
                     {
                         get => _description;
-                        internal set => SetProperty(ref _description, value);
+                        internal set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.DescriptionPropertyChanged);
                     }
                 }
                 """),
@@ -325,13 +325,13 @@
                     protected internal string Name
                     {
                         internal get => _name;
-                        set => SetProperty(ref _name, value);
+                        set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                     }
 
                     protected internal string? Description
                     {
                         protected get => _description;
-                        set => SetProperty(ref _description, value);
+                        set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.DescriptionPropertyChanged);
                     }
                 }
                 """),

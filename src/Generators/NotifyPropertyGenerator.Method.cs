@@ -50,7 +50,7 @@ namespace Minimal.Mvvm.SourceGenerator
             return methodSymbol.Parameters.Length <= 1;
         }
 
-        private static void GenerateForMethod(IndentedTextWriter writer, IMethodSymbol methodSymbol, Compilation compilation, NullableContextOptions nullableContextOptions, ref bool isFirst)
+        private static void GenerateForMethod(IndentedTextWriter writer, IMethodSymbol methodSymbol, Compilation compilation, NullableContextOptions nullableContextOptions, HashSet<string> propertyNames, bool useEventArgsCache, ref bool isFirst)
         {
             var comment = methodSymbol.GetComment();
             var attributes = methodSymbol.GetAttributes();
@@ -75,7 +75,12 @@ namespace Minimal.Mvvm.SourceGenerator
             string nullable = nullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
             var fullyQualifiedTypeName = $"{propertyType?.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName)}{nullable}";
 
-            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, comment, nullable, true, ref isFirst);
+            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, comment, nullable, true, useEventArgsCache, ref isFirst);
+
+            if (useEventArgsCache)
+            {
+                propertyNames.Add(propertyName);
+            }
         }
 
         private static INamedTypeSymbol? GetCommandTypeName(Compilation compilation, IMethodSymbol methodSymbol)
@@ -115,7 +120,5 @@ namespace Minimal.Mvvm.SourceGenerator
         }
 
         #endregion
-
-
     }
 }

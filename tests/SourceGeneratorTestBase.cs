@@ -55,7 +55,7 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
         }
 
         protected static void MultipleAssert(CSharpCompilation? outputCompilation, ImmutableArray<Diagnostic> diagnostics,
-            GeneratorRunResult generatorResult, string? expectedSource)
+            GeneratorRunResult generatorResult, string? expectedSource, bool useEventArgsCache = true)
         {
             var output = outputCompilation!.SyntaxTrees.ToDictionary(tree => tree.FilePath, tree => tree.ToString());
 
@@ -71,20 +71,23 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
                 return;
             }
 
-            Assert.That(outputCompilation!.SyntaxTrees.Length, Is.EqualTo(8));
+            Assert.That(outputCompilation!.SyntaxTrees.Length, Is.EqualTo(8 + (useEventArgsCache ? 1 : 0)));
             Assert.That(diagnostics.IsEmpty, Is.True);// there were no diagnostics created by the generators
             var allDiagnostics = outputCompilation.GetDiagnostics();
             Assert.That(allDiagnostics.IsEmpty, Is.True); // verify the compilation with the added source has no diagnostics
 
+
             Assert.That(generatorResult.Diagnostics.IsEmpty);
-            Assert.That(generatorResult.GeneratedSources.Length, Is.EqualTo(7));
+            Assert.That(generatorResult.GeneratedSources.Length, Is.EqualTo(7 + (useEventArgsCache ? 1 : 0)));
             Assert.That(generatorResult.Exception, Is.Null);
 
-            var generatedSource = generatorResult.GeneratedSources.Last().SyntaxTree.ToString();
-            var generatedSourceText = generatorResult.GeneratedSources.Last().SourceText.ToString();
-            Assert.That(generatedSource, Is.EqualTo(generatedSourceText));
+            var generatedSource = generatorResult.GeneratedSources[generatorResult.GeneratedSources.Length - 1 - (useEventArgsCache ? 1 : 0)];
 
-            var generatedSourceLines = GetSourceLines(generatedSource);
+            var generatedSourceTreeText = generatedSource.SyntaxTree.ToString();
+            var generatedSourceText = generatedSource.SourceText.ToString();
+            Assert.That(generatedSourceTreeText, Is.EqualTo(generatedSourceText));
+
+            var generatedSourceLines = GetSourceLines(generatedSourceTreeText);
             var expectedSourceLines = GetSourceLines(expectedSource!);
 
             Assert.That(generatedSourceLines, Is.EqualTo(expectedSourceLines));

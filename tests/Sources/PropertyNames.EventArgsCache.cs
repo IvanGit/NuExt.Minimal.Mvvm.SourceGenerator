@@ -2,7 +2,7 @@
 {
     internal static partial class PropertyNames
     {
-        public static List<(string source, string? expected)> Sources =
+        public static List<(string source, string? expected)> EventArgsCacheSources =
         [
             (
                 source : """
@@ -32,19 +32,19 @@
                     public string MyName
                     {
                         get => _name;
-                        set => SetProperty(ref _name, value);
+                        set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.MyNamePropertyChanged);
                     }
 
                     public string? MyDescription
                     {
                         get => _description;
-                        set => SetProperty(ref _description, value);
+                        set => SetProperty(ref _description, value, global::Minimal.Mvvm.EventArgsCache.MyDescriptionPropertyChanged);
                     }
 
                     public string? MyDescription2
                     {
                         get => _description2;
-                        set => SetProperty(ref _description2, value);
+                        set => SetProperty(ref _description2, value, global::Minimal.Mvvm.EventArgsCache.MyDescription2PropertyChanged);
                     }
                 }
                 """ ),

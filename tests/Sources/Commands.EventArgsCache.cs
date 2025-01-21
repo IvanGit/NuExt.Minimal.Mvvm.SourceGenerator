@@ -2,7 +2,7 @@
 {
     internal partial class Commands
     {
-        public static List<(string source, string? expected)> Sources =
+        public static List<(string source, string? expected)> EventArgsCacheSources =
         [
             (
                 source : """
@@ -67,7 +67,7 @@
                     public global::Minimal.Mvvm.IAsyncCommand? CloseCommand
                     {
                         get => _closeCommand;
-                        private set => SetProperty(ref _closeCommand, value);
+                        private set => SetProperty(ref _closeCommand, value, global::Minimal.Mvvm.EventArgsCache.CloseCommandPropertyChanged);
                     }
 
                     private global::Minimal.Mvvm.IAsyncCommand<string?>? _openFileCommand;
@@ -78,7 +78,7 @@
                     public global::Minimal.Mvvm.IAsyncCommand<string?>? OpenFileCommand
                     {
                         get => _openFileCommand;
-                        private set => SetProperty(ref _openFileCommand, value);
+                        private set => SetProperty(ref _openFileCommand, value, global::Minimal.Mvvm.EventArgsCache.OpenFileCommandPropertyChanged);
                     }
 
                     private global::System.Windows.Input.ICommand? _hideCommand;
@@ -86,7 +86,7 @@
                     public global::System.Windows.Input.ICommand? HideCommand
                     {
                         get => _hideCommand;
-                        private set => SetProperty(ref _hideCommand, value);
+                        private set => SetProperty(ref _hideCommand, value, global::Minimal.Mvvm.EventArgsCache.HideCommandPropertyChanged);
                     }
 
                     private global::System.Windows.Input.ICommand? _showAndActivateCommand;
@@ -94,7 +94,7 @@
                     public global::System.Windows.Input.ICommand? ShowAndActivateCommand
                     {
                         get => _showAndActivateCommand;
-                        private set => SetProperty(ref _showAndActivateCommand, value);
+                        private set => SetProperty(ref _showAndActivateCommand, value, global::Minimal.Mvvm.EventArgsCache.ShowAndActivateCommandPropertyChanged);
                     }
 
                     private global::Minimal.Mvvm.ICommand<bool>? _activateCommand;
@@ -102,7 +102,7 @@
                     public global::Minimal.Mvvm.ICommand<bool>? ActivateCommand
                     {
                         get => _activateCommand;
-                        private set => SetProperty(ref _activateCommand, value);
+                        private set => SetProperty(ref _activateCommand, value, global::Minimal.Mvvm.EventArgsCache.ActivateCommandPropertyChanged);
                     }
 
                     private global::System.Action<global::Minimal.Mvvm.IAsyncCommand<global::Minimal.Mvvm.ViewModelBase?>?>? _changeActiveViewModelCommandChangedCallback;
@@ -111,7 +111,7 @@
                     public global::Minimal.Mvvm.IAsyncCommand<global::Minimal.Mvvm.ViewModelBase?>? ChangeActiveViewModelCommand
                     {
                         get => _changeActiveViewModelCommand;
-                        private set => SetProperty(ref _changeActiveViewModelCommand, value, _changeActiveViewModelCommandChangedCallback ??= OnChangeActiveViewModelCommandChanged);
+                        private set => SetProperty(ref _changeActiveViewModelCommand, value, _changeActiveViewModelCommandChangedCallback ??= OnChangeActiveViewModelCommandChanged, global::Minimal.Mvvm.EventArgsCache.ChangeActiveViewModelCommandPropertyChanged);
                     }
                 }
                 """ ),

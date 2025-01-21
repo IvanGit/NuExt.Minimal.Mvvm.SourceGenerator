@@ -2,7 +2,7 @@
 {
     internal partial class NotifyDataErrorInfoAttributes
     {
-        public static List<(string source, string? expected)> Sources =
+        public static List<(string source, string? expected)> EventArgsCacheSources =
         [
             (
                 source : """
@@ -40,7 +40,7 @@
                                 public string Name
                                 {
                                     get => _name;
-                                    set => SetProperty(ref _name, value);
+                                    set => SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged);
                                 }
 
                                 private System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Generic.List<string>>? _validationErrors;

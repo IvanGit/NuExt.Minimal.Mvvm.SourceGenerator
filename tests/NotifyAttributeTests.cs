@@ -5,7 +5,7 @@
         [Test]
         public void NotifyAttributeAlsoNotifyAttributesTest()
         {
-            var sources = AlsoNotifyAttributes.Sources;
+            var sources = AlsoNotifyAttributes.EventArgsCacheSources;
 
             foreach (var (source, expected) in sources)
             {
@@ -18,7 +18,7 @@
         [Test]
         public void NotifyAttributePropertyNamesTest()
         {
-            var sources = PropertyNames.Sources;
+            var sources = PropertyNames.EventArgsCacheSources;
 
             foreach (var (source, expected) in sources)
             {
@@ -31,7 +31,7 @@
         [Test]
         public void NotifyAttributeAccessModifiersTest()
         {
-            var sources = AccessModifiers.Sources;
+            var sources = AccessModifiers.EventArgsCacheSources;
 
             foreach (var (source, expected) in sources)
             {
@@ -44,7 +44,7 @@
         [Test]
         public void NotifyAttributeCallbacksTest()
         {
-            var sources = Callbacks.Sources;
+            var sources = Callbacks.EventArgsCacheSources;
 
             foreach (var (source, expected) in sources)
             {
@@ -57,7 +57,7 @@
         [Test]
         public void NotifyAttributeCustomAttributesTest()
         {
-            var sources = CustomAttributes.Sources;
+            var sources = CustomAttributes.EventArgsCacheSources;
 
             foreach (var (source, expected) in sources)
             {
@@ -70,7 +70,7 @@
         [Test]
         public void NotifyAttributeCommandsTest()
         {
-            var sources = Commands.Sources;
+            var sources = Commands.EventArgsCacheSources;
 
             foreach (var (source, expected) in sources)
             {

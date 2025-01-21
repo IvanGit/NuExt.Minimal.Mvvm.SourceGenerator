@@ -2,7 +2,7 @@
 {
     internal static partial class AlsoNotifyAttributes
     {
-        public static List<(string source, string? expected)> Sources =
+        public static List<(string source, string? expected)> EventArgsCacheSources =
         [
             (
                 source : """
@@ -36,7 +36,7 @@
                                     get => _name;
                                     set
                                     {
-                                        if (SetProperty(ref _name, value))
+                                        if (SetProperty(ref _name, value, global::Minimal.Mvvm.EventArgsCache.NamePropertyChanged))
                                         {
                                             RaisePropertyChanged("FullName");
                                         }
@@ -48,7 +48,7 @@
                                     get => _surname;
                                     set
                                     {
-                                        if (SetProperty(ref _surname, value))
+                                        if (SetProperty(ref _surname, value, global::Minimal.Mvvm.EventArgsCache.SurnamePropertyChanged))
                                         {
                                             RaisePropertyChanged("FullName");
                                         }
@@ -60,7 +60,7 @@
                                     get => _middleName;
                                     set
                                     {
-                                        if (SetProperty(ref _middleName, value))
+                                        if (SetProperty(ref _middleName, value, global::Minimal.Mvvm.EventArgsCache.MiddleNamePropertyChanged))
                                         {
                                             RaisePropertyChanged("FullName");
                                         }
@@ -98,7 +98,7 @@
                                     get => _birthDate;
                                     set
                                     {
-                                        if (SetProperty(ref _birthDate, value))
+                                        if (SetProperty(ref _birthDate, value, global::Minimal.Mvvm.EventArgsCache.BirthDatePropertyChanged))
                                         {
                                             RaisePropertiesChanged("Age", "YearsToRetirement");
                                         }
@@ -143,7 +143,7 @@
                                    get => _salary;
                                    set
                                    {
-                                       if (SetProperty(ref _salary, value))
+                                       if (SetProperty(ref _salary, value, global::Minimal.Mvvm.EventArgsCache.SalaryPropertyChanged))
                                        {
                                            RaisePropertiesChanged("Taxes", "NetSalary", "AnnualSalary");
                                        }
@@ -155,7 +155,7 @@
                                    get => _taxRate;
                                    set
                                    {
-                                       if (SetProperty(ref _taxRate, value))
+                                       if (SetProperty(ref _taxRate, value, global::Minimal.Mvvm.EventArgsCache.TaxRatePropertyChanged))
                                        {
                                            RaisePropertiesChanged("Taxes", "NetSalary", "AnnualSalary");
                                        }
@@ -217,7 +217,7 @@
                                    get => _salary;
                                    set
                                    {
-                                       if (SetProperty(ref _salary, value, _salaryChangedCallback ??= OnSalaryChanged))
+                                       if (SetProperty(ref _salary, value, _salaryChangedCallback ??= OnSalaryChanged, global::Minimal.Mvvm.EventArgsCache.SalaryPropertyChanged))
                                        {
                                            RaisePropertiesChanged("Taxes", "NetSalary", "AnnualSalary");
                                        }
@@ -230,7 +230,7 @@
                                    get => _taxRate;
                                    set
                                    {
-                                       if (SetProperty(ref _taxRate, value, _taxRateChangedCallback ??= OnTaxRateChanged))
+                                       if (SetProperty(ref _taxRate, value, _taxRateChangedCallback ??= OnTaxRateChanged, global::Minimal.Mvvm.EventArgsCache.TaxRatePropertyChanged))
                                        {
                                            RaisePropertiesChanged("Taxes", "NetSalary", "AnnualSalary");
                                        }

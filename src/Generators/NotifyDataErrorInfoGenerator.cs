@@ -1,7 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System.CodeDom.Compiler;
-using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace Minimal.Mvvm.SourceGenerator

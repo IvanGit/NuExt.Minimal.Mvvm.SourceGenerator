@@ -2,7 +2,7 @@
 {
     internal static partial class Callbacks
     {
-        public static List<(string source, string? expected)> Sources =
+        public static List<(string source, string? expected)> EventArgsCacheSources =
         [
             (
                 source : """
@@ -39,7 +39,7 @@
                     public global::Minimal.Mvvm.ViewModelBase? CurrentViewModel
                     {
                         get => _currentViewModel;
-                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged);
+                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged, global::Minimal.Mvvm.EventArgsCache.CurrentViewModelPropertyChanged);
                     }
                 }
                 """ ),
@@ -78,7 +78,7 @@
                     public global::Minimal.Mvvm.ViewModelBase? CurrentViewModel
                     {
                         get => _currentViewModel;
-                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged);
+                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged, global::Minimal.Mvvm.EventArgsCache.CurrentViewModelPropertyChanged);
                     }
                 }
                 """ ),
@@ -117,7 +117,7 @@
                     public global::Minimal.Mvvm.ViewModelBase? CurrentViewModel
                     {
                         get => _currentViewModel;
-                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged);
+                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged, global::Minimal.Mvvm.EventArgsCache.CurrentViewModelPropertyChanged);
                     }
                 }
                 """ ),
@@ -152,7 +152,7 @@
                     public global::Minimal.Mvvm.ViewModelBase? CurrentViewModel
                     {
                         get => _currentViewModel;
-                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged);
+                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged, global::Minimal.Mvvm.EventArgsCache.CurrentViewModelPropertyChanged);
                     }
                 }
                 """ ),
@@ -187,7 +187,7 @@
                     public global::Minimal.Mvvm.ViewModelBase? CurrentViewModel
                     {
                         get => _currentViewModel;
-                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged);
+                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged, global::Minimal.Mvvm.EventArgsCache.CurrentViewModelPropertyChanged);
                     }
                 }
                 """ ),
@@ -224,7 +224,7 @@
                     public global::Minimal.Mvvm.ViewModelBase? CurrentViewModel
                     {
                         get => _currentViewModel;
-                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged);
+                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged, global::Minimal.Mvvm.EventArgsCache.CurrentViewModelPropertyChanged);
                     }
                 }
                 """ ),
@@ -255,7 +255,7 @@
                     public global::Minimal.Mvvm.ViewModelBase? CurrentViewModel
                     {
                         get => _currentViewModel;
-                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged);
+                        set => SetProperty(ref _currentViewModel, value, _currentViewModelChangedCallback ??= OnCurrentViewModelChanged, global::Minimal.Mvvm.EventArgsCache.CurrentViewModelPropertyChanged);
                     }
                 }
                 """ ),

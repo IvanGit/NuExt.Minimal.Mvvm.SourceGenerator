@@ -28,7 +28,7 @@ namespace Minimal.Mvvm.SourceGenerator
             return !fieldSymbol.IsReadOnly && IsValidContainingType(compilation, fieldSymbol.ContainingType);
         }
 
-        private static void GenerateForField(IndentedTextWriter writer, IFieldSymbol fieldSymbol, NullableContextOptions nullableContextOptions, ref bool isFirst)
+        private static void GenerateForField(IndentedTextWriter writer, IFieldSymbol fieldSymbol, NullableContextOptions nullableContextOptions, HashSet<string> propertyNames, bool useEventArgsCache, ref bool isFirst)
         {
             if (fieldSymbol.IsReadOnly)
             {
@@ -58,7 +58,12 @@ namespace Minimal.Mvvm.SourceGenerator
 
             string nullable = nullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
 
-            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, comment, nullable, false, ref isFirst);
+            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, comment, nullable, false, useEventArgsCache, ref isFirst);
+
+            if (useEventArgsCache)
+            {
+                propertyNames.Add(propertyName);
+            }
         }
 
         private static string GetPropertyNameFromFieldName(string backingFieldName)

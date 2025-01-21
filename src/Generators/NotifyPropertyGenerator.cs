@@ -48,7 +48,7 @@ namespace Minimal.Mvvm.SourceGenerator
             return baseTypeSymbol != null && containingType.InheritsFromType(baseTypeSymbol);
         }
 
-        public static void Generate(IndentedTextWriter writer, IEnumerable<ISymbol> members, Compilation compilation, ref bool isFirst)
+        public static void Generate(IndentedTextWriter writer, IEnumerable<ISymbol> members, Compilation compilation, HashSet<string> propertyNames, bool useEventArgsCache, ref bool isFirst)
         {
             var nullableContextOptions = compilation.Options.NullableContextOptions;
             foreach (var member in members)
@@ -56,10 +56,10 @@ namespace Minimal.Mvvm.SourceGenerator
                 switch (member)
                 {
                     case IFieldSymbol fieldSymbol:
-                        GenerateForField(writer, fieldSymbol, nullableContextOptions, ref isFirst);
+                        GenerateForField(writer, fieldSymbol, nullableContextOptions, propertyNames, useEventArgsCache, ref isFirst);
                         break;
                     case IMethodSymbol methodSymbol:
-                        GenerateForMethod(writer, methodSymbol, compilation, nullableContextOptions, ref isFirst);
+                        GenerateForMethod(writer, methodSymbol, compilation, nullableContextOptions, propertyNames, useEventArgsCache, ref isFirst);
                         break;
                     default:
                         break;
@@ -72,7 +72,7 @@ namespace Minimal.Mvvm.SourceGenerator
             IEnumerable<CustomAttributeData> customAttributeData,
             IEnumerable<AlsoNotifyAttributeData> alsoNotifyAttributeData, 
             string[]? comment, string nullable,
-            bool generateBackingFieldName, ref bool isFirst)
+            bool generateBackingFieldName, bool useEventArgsCache, ref bool isFirst)
         {
             HashSet<AlsoNotifyAttributeData>? alsoNotifyPropertiesSet = null;
             List<AlsoNotifyAttributeData>? alsoNotifyProperties = null;
@@ -172,9 +172,18 @@ namespace Minimal.Mvvm.SourceGenerator
             {
                 writer.Write(" => ");
             }
-            writer.Write(callbackData.CallbackName != null
-                ? $"SetProperty(ref {backingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName})"
-                : $"SetProperty(ref {backingFieldName}, value)");
+            if (useEventArgsCache)
+            {
+                writer.Write(callbackData.CallbackName != null
+                    ? $"SetProperty(ref {backingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName}, {EventArgsCacheGenerator.EventArgsCacheFullyQualifiedName}.{propertyName}PropertyChanged)"
+                    : $"SetProperty(ref {backingFieldName}, value, {EventArgsCacheGenerator.EventArgsCacheFullyQualifiedName}.{propertyName}PropertyChanged)");
+            }
+            else
+            {
+                writer.Write(callbackData.CallbackName != null
+                    ? $"SetProperty(ref {backingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName})"
+                    : $"SetProperty(ref {backingFieldName}, value)");
+            }
             if (hasSetCondition)
             {
                 writer.WriteLine(")");
