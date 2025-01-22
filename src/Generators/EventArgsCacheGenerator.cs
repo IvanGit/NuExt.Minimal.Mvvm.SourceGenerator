@@ -2,25 +2,33 @@
 
 namespace Minimal.Mvvm.SourceGenerator
 {
+    internal readonly ref struct EventArgsCacheGeneratorContext(IndentedTextWriter writer, List<string> propertyNames)
+    {
+        internal readonly List<string> PropertyNames = propertyNames;
+        internal readonly IndentedTextWriter Writer = writer;
+    }
+
     internal struct EventArgsCacheGenerator
     {
-        internal const string EventArgsCacheFullyQualifiedName = "global::Minimal.Mvvm.EventArgsCache";
+        internal const string GeneratedClassFullyQualifiedName = $"global::{GeneratedNamespace}.{GeneratedClassName}";
+        internal const string GeneratedClassName = "EventArgsCache";
+        internal const string GeneratedNamespace = "Minimal.Mvvm";
 
         #region Methods
 
-        public static void Generate(IndentedTextWriter writer, HashSet<string> propertyNames)
+        public static void Generate(scoped EventArgsCacheGeneratorContext ctx)
         {
-            writer.WriteLine("internal static partial class EventArgsCache");
-            writer.WriteLine("{");
-            writer.Indent++;
+            ctx.Writer.WriteLine($"internal static partial class {GeneratedClassName}");
+            ctx.Writer.WriteLine("{");
+            ctx.Writer.Indent++;
 
-            foreach (var propertyName in propertyNames)
+            foreach (var propertyName in ctx.PropertyNames)
             {
-                writer.WriteLine($"""internal static readonly global::System.ComponentModel.PropertyChangedEventArgs {propertyName}PropertyChanged = new global::System.ComponentModel.PropertyChangedEventArgs("{propertyName}");""");
+                ctx.Writer.WriteLine($"""internal static readonly global::System.ComponentModel.PropertyChangedEventArgs {propertyName}PropertyChanged = new global::System.ComponentModel.PropertyChangedEventArgs("{propertyName}");""");
             }
 
-            writer.Indent--;
-            writer.WriteLine("}");
+            ctx.Writer.Indent--;
+            ctx.Writer.WriteLine("}");
         }
 
         #endregion

@@ -1,7 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.CodeDom.Compiler;
 
 namespace Minimal.Mvvm.SourceGenerator
 {
@@ -19,20 +18,16 @@ namespace Minimal.Mvvm.SourceGenerator
             {
                 return false;
             }
-            switch (methodDeclarationSyntax.ReturnType)
+            return methodDeclarationSyntax.ReturnType switch
             {
-                case IdentifierNameSyntax identifierNameSyntax:
-                    return identifierNameSyntax.Identifier is
-                    {
-                        ValueText: "Task"
-                    };
-                case PredefinedTypeSyntax predefinedTypeSyntax:
-                    return predefinedTypeSyntax.Keyword.IsKind(SyntaxKind.VoidKeyword);
-                case QualifiedNameSyntax qualifiedNameSyntax:
-                    return qualifiedNameSyntax.ToString() == "global::System.Threading.Tasks.Task" || qualifiedNameSyntax.ToString() == "System.Threading.Tasks.Task";
-                default:
-                    return false;
-            }
+                IdentifierNameSyntax identifierNameSyntax => identifierNameSyntax.Identifier is
+                {
+                    ValueText: "Task"
+                },
+                PredefinedTypeSyntax predefinedTypeSyntax => predefinedTypeSyntax.Keyword.IsKind(SyntaxKind.VoidKeyword),
+                QualifiedNameSyntax qualifiedNameSyntax => qualifiedNameSyntax.ToString() == "global::System.Threading.Tasks.Task" || qualifiedNameSyntax.ToString() == "System.Threading.Tasks.Task",
+                _ => false,
+            };
         }
 
         internal static bool IsValidMethod(Compilation compilation, IMethodSymbol methodSymbol)
@@ -50,9 +45,9 @@ namespace Minimal.Mvvm.SourceGenerator
             return methodSymbol.Parameters.Length <= 1;
         }
 
-        private static void GenerateForMethod(IndentedTextWriter writer, IMethodSymbol methodSymbol, Compilation compilation, NullableContextOptions nullableContextOptions, HashSet<string> propertyNames, bool useEventArgsCache, ref bool isFirst)
+        private static void GenerateForMethod(scoped NotifyPropertyGeneratorContext ctx, IMethodSymbol methodSymbol, ref bool isFirst)
         {
-            var comment = methodSymbol.GetComment();
+            ctx.Comment = methodSymbol.GetComment();
             var attributes = methodSymbol.GetAttributes();
 
             var notifyAttribute = GetNotifyAttribute(attributes)!;
@@ -64,23 +59,20 @@ namespace Minimal.Mvvm.SourceGenerator
             var alsoNotifyAttributes = GetAlsoNotifyAttributes(attributes);
             var alsoNotifyAttributeData = GetAlsoNotifyAttributeData(alsoNotifyAttributes);
 
-            var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromMethodName(methodSymbol.Name);
+            ctx.PropertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromMethodName(methodSymbol.Name);
 
-            var backingFieldName = GetBackingFieldNameFromPropertyName(propertyName);
+            ctx.BackingFieldName = GetBackingFieldNameFromPropertyName(ctx.PropertyName);
 
-            var propertyType = GetCommandTypeName(compilation, methodSymbol);
+            var propertyType = GetCommandTypeName(ctx.Compilation, methodSymbol);
 
             var callbackData = GetCallbackData(methodSymbol.ContainingType, propertyType, notifyAttributeData);
 
-            string nullable = nullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
-            var fullyQualifiedTypeName = $"{propertyType?.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName)}{nullable}";
+            string nullable = ctx.Compilation.Options.NullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
+            ctx.FullyQualifiedTypeName = $"{propertyType?.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName)}{nullable}";
 
-            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, comment, nullable, true, useEventArgsCache, ref isFirst);
+            ctx.GenerateBackingFieldName = true;
 
-            if (useEventArgsCache)
-            {
-                propertyNames.Add(propertyName);
-            }
+            GenerateProperty(ctx, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, ref isFirst);
         }
 
         private static INamedTypeSymbol? GetCommandTypeName(Compilation compilation, IMethodSymbol methodSymbol)

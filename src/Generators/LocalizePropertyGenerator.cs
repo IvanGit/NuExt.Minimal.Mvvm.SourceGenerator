@@ -8,6 +8,13 @@ using System.Xml.Linq;
 
 namespace Minimal.Mvvm.SourceGenerator
 {
+    internal readonly ref struct LocalizePropertyGeneratorContext(IndentedTextWriter writer, IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> members, ImmutableArray<(string name, AdditionalText text)> additionalTexts)
+    {
+        internal readonly ImmutableArray<(string name, AdditionalText text)> AdditionalTexts = additionalTexts;
+        internal readonly IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> Members = members;
+        internal readonly IndentedTextWriter Writer = writer;
+    }
+
     internal struct LocalizePropertyGenerator
     {
         internal const string LocalizeAttributeFullyQualifiedName = "Minimal.Mvvm.LocalizeAttribute";
@@ -47,29 +54,28 @@ namespace Minimal.Mvvm.SourceGenerator
 
         #region Methods
 
-        public static void Generate(IndentedTextWriter writer, IEnumerable<(ISymbol member, ImmutableArray<AttributeData> attributes)> members, ImmutableArray<(string name, AdditionalText text)> additionalTexts, ref bool isFirst)
+        public static void Generate(scoped LocalizePropertyGeneratorContext ctx, ref bool isFirst)
         {
-            foreach (var (member, attributes) in members)
+            foreach (var (member, attributes) in ctx.Members)
             {
                 if (member is not ITypeSymbol typeSymbol)
                 {
                     Trace.WriteLine($"{member} is not a ITypeSymbol");
                     continue;
                 }
-                GenerateForMember(writer, typeSymbol, attributes, additionalTexts, ref isFirst);
+                GenerateForMember(ctx, typeSymbol, attributes, ref isFirst);
             }
         }
 
-        private static void GenerateForMember(IndentedTextWriter writer, ITypeSymbol typeSymbol,
-            ImmutableArray<AttributeData> attributes,
-            ImmutableArray<(string name, AdditionalText text)> additionalTexts, ref bool isFirst)
+        private static void GenerateForMember(scoped LocalizePropertyGeneratorContext ctx, ITypeSymbol typeSymbol,
+            ImmutableArray<AttributeData> attributes, ref bool isFirst)
         {
             _ = typeSymbol;
             var localizeAttribute = GetLocalizeAttribute(attributes)!;
             var localizeAttributeData = GetLocalizeAttributeData(localizeAttribute);
             var jsonFileName = Path.GetFileName(localizeAttributeData.JsonFileName);
 
-            var text = additionalTexts.First(pair => pair.name == jsonFileName).text;
+            var text = ctx.AdditionalTexts.First(pair => pair.name == jsonFileName).text;
 
             Dictionary<string, string>? translations;
             try
@@ -91,13 +97,13 @@ namespace Minimal.Mvvm.SourceGenerator
             {
                 if (!isFirst)
                 {
-                    writer.WriteLineNoTabs(string.Empty);
+                    ctx.Writer.WriteLineNoTabs(string.Empty);
                 }
                 isFirst = false;
-                writer.WriteLine("/// <summary>");
-                writer.WriteLine($"/// Looks up a localized string similar to {EscapeString(pair.Value)}.");
-                writer.WriteLine("/// </summary>");
-                writer.WriteLine($"public static string {StringToValidPropertyName(pair.Key)} {{ get; set; }} = {JsonConvert.ToString(pair.Value)};");
+                ctx.Writer.WriteLine("/// <summary>");
+                ctx.Writer.WriteLine($"/// Looks up a localized string similar to {EscapeString(pair.Value)}.");
+                ctx.Writer.WriteLine("/// </summary>");
+                ctx.Writer.WriteLine($"public static string {StringToValidPropertyName(pair.Key)} {{ get; set; }} = {JsonConvert.ToString(pair.Value)};");
             }
         }
 

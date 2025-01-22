@@ -5,6 +5,13 @@ using System.Diagnostics;
 
 namespace Minimal.Mvvm.SourceGenerator
 {
+    internal readonly ref struct NotifyDataErrorInfoGeneratorContext(IndentedTextWriter writer, IEnumerable<ISymbol> members, Compilation compilation)
+    {
+        internal readonly Compilation Compilation = compilation;
+        internal readonly IEnumerable<ISymbol> Members = members;
+        internal readonly IndentedTextWriter Writer = writer;
+    }
+
     internal struct NotifyDataErrorInfoGenerator
     {
         internal const string NotifyDataErrorInfoAttributeFullyQualifiedName = "Minimal.Mvvm.NotifyDataErrorInfoAttribute";
@@ -33,52 +40,51 @@ namespace Minimal.Mvvm.SourceGenerator
 
         #region Methods
 
-        public static void Generate(IndentedTextWriter writer, IEnumerable<ISymbol> members, Compilation compilation, ref bool isFirst)
+        public static void Generate(scoped NotifyDataErrorInfoGeneratorContext ctx, ref bool isFirst)
         {
-            var nullableContextOptions = compilation.Options.NullableContextOptions;
-            foreach (var member in members)
+            foreach (var member in ctx.Members)
             {
                 if (member is not ITypeSymbol typeSymbol)
                 {
                     Trace.WriteLine($"{member} is not a ITypeSymbol");
                     continue;
                 }
-                GenerateForMember(writer, typeSymbol, nullableContextOptions, ref isFirst);
+                GenerateForMember(ctx, typeSymbol, ref isFirst);
             }
         }
 
-        private static void GenerateForMember(IndentedTextWriter writer, ITypeSymbol typeSymbol, NullableContextOptions nullableContextOptions, ref bool isFirst)
+        private static void GenerateForMember(scoped NotifyDataErrorInfoGeneratorContext ctx, ITypeSymbol typeSymbol, ref bool isFirst)
         {
             _ = typeSymbol;
 
-            string nullable = nullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
+            string nullable = ctx.Compilation.Options.NullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
 
             var code = GetCodeSource(nullable);
             var lines = GetSourceLines(code);
 
             if (!isFirst)
             {
-                writer.WriteLineNoTabs(string.Empty);
+                ctx.Writer.WriteLineNoTabs(string.Empty);
             }
             isFirst = false;
 
-            var originalIndent = writer.Indent;
+            var originalIndent = ctx.Writer.Indent;
             try
             {
                 foreach (var (indent, length, line) in lines)
                 {
                     if (length == 0)
                     {
-                        writer.WriteLineNoTabs(string.Empty);
+                        ctx.Writer.WriteLineNoTabs(string.Empty);
                         continue;
                     }
-                    writer.Indent = originalIndent + indent;
-                    writer.WriteLine(line);
+                    ctx.Writer.Indent = originalIndent + indent;
+                    ctx.Writer.WriteLine(line);
                 }
             }
             finally
             {
-                writer.Indent = originalIndent;
+                ctx.Writer.Indent = originalIndent;
             }
         }
 

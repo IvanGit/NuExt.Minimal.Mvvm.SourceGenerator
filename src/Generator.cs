@@ -362,15 +362,15 @@ namespace Minimal.Mvvm.SourceGenerator
                         switch (group.Key)
                         {
                             case AttributeType.Notify:
-                                NotifyPropertyGenerator.Generate(writer, group.Select(m => m.member), compilation, propertyNames, true, ref isFirst);
+                                NotifyPropertyGenerator.Generate(new NotifyPropertyGeneratorContext(writer, group.Select(m => m.member), compilation, propertyNames, useEventArgsCache: true), ref isFirst);
                                 break;
 
                             case AttributeType.NotifyDataErrorInfo:
-                                NotifyDataErrorInfoGenerator.Generate(writer, group.Select(m => m.member), compilation, ref isFirst);
+                                NotifyDataErrorInfoGenerator.Generate(new NotifyDataErrorInfoGeneratorContext(writer, group.Select(m => m.member), compilation), ref isFirst);
                                 break;
 
                             case AttributeType.Localize:
-                                LocalizePropertyGenerator.Generate(writer, group.Select(m => (m.member, m.attributes)), additionalTexts, ref isFirst);
+                                LocalizePropertyGenerator.Generate(new LocalizePropertyGeneratorContext(writer, group.Select(m => (m.member, m.attributes)), additionalTexts), ref isFirst);
                                 break;
 
                             default:
@@ -402,18 +402,18 @@ namespace Minimal.Mvvm.SourceGenerator
 
                 if (propertyNames.Count > 0)
                 {
-                    const string containingNamespace = "Minimal.Mvvm";
-
                     sb.Clear();
                     using var writer = new IndentedTextWriter(new StringWriter(sb));
-                    writer.WriteSourceHeader(nullableContextOptions, containingNamespace);
+                    writer.WriteSourceHeader(nullableContextOptions, EventArgsCacheGenerator.GeneratedNamespace);
 
-                    EventArgsCacheGenerator.Generate(writer, propertyNames);
+                    var properties = propertyNames.ToList();
+                    properties.Sort();
+                    EventArgsCacheGenerator.Generate(new EventArgsCacheGeneratorContext(writer, properties));
 
-                    writer.WriteSourceFinished(containingNamespace);
+                    writer.WriteSourceFinished(EventArgsCacheGenerator.GeneratedNamespace);
                     var sourceText = sb.ToString();
 
-                    context.AddSource("Minimal.Mvvm.EventArgsCache.g.cs", sourceText);
+                    context.AddSource($"{EventArgsCacheGenerator.GeneratedNamespace}.{EventArgsCacheGenerator.GeneratedClassName}.g.cs", sourceText);
                 }
             });
         }

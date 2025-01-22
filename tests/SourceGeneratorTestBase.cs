@@ -1,14 +1,15 @@
-﻿using Basic.Reference.Assemblies;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Minimal.Mvvm;
 using Minimal.Mvvm.SourceGenerator;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 {
+    [SuppressMessage("Assertion", "NUnit2045:Use Assert.Multiple", Justification = "<Pending>")]
     internal abstract class SourceGeneratorTestBase
     {
         protected static readonly string GeneratorName = typeof(Generator).Namespace!;
@@ -19,16 +20,17 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
             var tree = CSharpSyntaxTree.ParseText(code);
 
             var references =
-#if NET8_0_OR_GREATER
-                ReferenceAssemblies.Net80.Cast<MetadataReference>()
+#if NET9_0
+                Basic.Reference.Assemblies.Net90.References.All.Cast<MetadataReference>()
+#elif NET8_0
+                Basic.Reference.Assemblies.Net80.References.All.Cast<MetadataReference>()
 #elif NETFRAMEWORK
-                ReferenceAssemblies.Net472.Cast<MetadataReference>().Concat(new[] { MetadataReference.CreateFromFile(typeof(System.Text.Json.JsonSerializer).GetTypeInfo().Assembly.Location) })
+                Basic.Reference.Assemblies.Net472.References.All.Cast<MetadataReference>().Concat([MetadataReference.CreateFromFile(typeof(System.Text.Json.JsonSerializer).GetTypeInfo().Assembly.Location)])
 #endif
-                    .Concat(new[]
-                        { MetadataReference.CreateFromFile(typeof(BindableBase).GetTypeInfo().Assembly.Location) });
+                    .Concat([MetadataReference.CreateFromFile(typeof(BindableBase).GetTypeInfo().Assembly.Location)]);
 
             var compilation = CSharpCompilation.Create("HelloWorld.dll",
-                new[] { tree },
+                [tree],
                 references: references,
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                     nullableContextOptions: nullableContextOptions));
@@ -63,22 +65,22 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 
             if (expectedSource == null)
             {
-                Assert.That(outputCompilation!.SyntaxTrees.Length, Is.EqualTo(7));
+                Assert.That(outputCompilation!.SyntaxTrees, Has.Length.EqualTo(7));
                 Assert.That(diagnostics.IsEmpty, Is.True);// there were no diagnostics created by the generators
                 Assert.That(generatorResult.Diagnostics.IsEmpty, Is.True);
-                Assert.That(generatorResult.GeneratedSources.Length, Is.EqualTo(6));
+                Assert.That(generatorResult.GeneratedSources, Has.Length.EqualTo(6));
                 Assert.That(generatorResult.Exception, Is.Null);
                 return;
             }
 
-            Assert.That(outputCompilation!.SyntaxTrees.Length, Is.EqualTo(8 + (useEventArgsCache ? 1 : 0)));
+            Assert.That(outputCompilation!.SyntaxTrees, Has.Length.EqualTo(8 + (useEventArgsCache ? 1 : 0)));
             Assert.That(diagnostics.IsEmpty, Is.True);// there were no diagnostics created by the generators
             var allDiagnostics = outputCompilation.GetDiagnostics();
             Assert.That(allDiagnostics.IsEmpty, Is.True); // verify the compilation with the added source has no diagnostics
 
 
             Assert.That(generatorResult.Diagnostics.IsEmpty);
-            Assert.That(generatorResult.GeneratedSources.Length, Is.EqualTo(7 + (useEventArgsCache ? 1 : 0)));
+            Assert.That(generatorResult.GeneratedSources, Has.Length.EqualTo(7 + (useEventArgsCache ? 1 : 0)));
             Assert.That(generatorResult.Exception, Is.Null);
 
             var generatedSource = generatorResult.GeneratedSources[generatorResult.GeneratedSources.Length - 1 - (useEventArgsCache ? 1 : 0)];
@@ -95,7 +97,7 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 
         protected static (CSharpCompilation? outputCompilation, ImmutableArray<Diagnostic> diagnostics, GeneratorRunResult generatorResult) RunGenerator(CSharpCompilation compilation)
         {
-            return RunGenerator(compilation, ImmutableArray<AdditionalText>.Empty);
+            return RunGenerator(compilation, []);
         }
 
         protected static (CSharpCompilation? outputCompilation, ImmutableArray<Diagnostic> diagnostics, GeneratorRunResult generatorResult) RunGenerator(CSharpCompilation compilation, ImmutableArray<AdditionalText> additionalTexts)

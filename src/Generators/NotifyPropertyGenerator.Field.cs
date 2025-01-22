@@ -1,6 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System.CodeDom.Compiler;
 
 namespace Minimal.Mvvm.SourceGenerator
 {
@@ -28,14 +27,14 @@ namespace Minimal.Mvvm.SourceGenerator
             return !fieldSymbol.IsReadOnly && IsValidContainingType(compilation, fieldSymbol.ContainingType);
         }
 
-        private static void GenerateForField(IndentedTextWriter writer, IFieldSymbol fieldSymbol, NullableContextOptions nullableContextOptions, HashSet<string> propertyNames, bool useEventArgsCache, ref bool isFirst)
+        private static void GenerateForField(scoped NotifyPropertyGeneratorContext ctx, IFieldSymbol fieldSymbol, ref bool isFirst)
         {
             if (fieldSymbol.IsReadOnly)
             {
                 return;
             }
 
-            var comment = fieldSymbol.GetComment();
+            ctx.Comment = fieldSymbol.GetComment();
             var attributes = fieldSymbol.GetAttributes();
 
             var notifyAttribute = GetNotifyAttribute(attributes)!;
@@ -47,23 +46,18 @@ namespace Minimal.Mvvm.SourceGenerator
             var alsoNotifyAttributes = GetAlsoNotifyAttributes(attributes);
             var alsoNotifyAttributeData = GetAlsoNotifyAttributeData(alsoNotifyAttributes);
 
-            var backingFieldName = fieldSymbol.Name;
-            var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromFieldName(backingFieldName);
+            ctx.BackingFieldName = fieldSymbol.Name;
+            ctx.PropertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromFieldName(ctx.BackingFieldName);
 
             var propertyType = fieldSymbol.Type;
 
-            var fullyQualifiedTypeName = propertyType.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName);
+            ctx.FullyQualifiedTypeName = propertyType.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName);
 
             var callbackData = GetCallbackData(fieldSymbol.ContainingType, propertyType, notifyAttributeData);
 
-            string nullable = nullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
+            ctx.GenerateBackingFieldName = false;
 
-            GenerateProperty(writer, propertyName, backingFieldName, fullyQualifiedTypeName, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, comment, nullable, false, useEventArgsCache, ref isFirst);
-
-            if (useEventArgsCache)
-            {
-                propertyNames.Add(propertyName);
-            }
+            GenerateProperty(ctx, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, ref isFirst);
         }
 
         private static string GetPropertyNameFromFieldName(string backingFieldName)

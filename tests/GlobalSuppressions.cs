@@ -5,4 +5,5 @@
 
 using System.Diagnostics.CodeAnalysis;
 
+[assembly: SuppressMessage("CodeQuality", "IDE0079:Remove unnecessary suppression", Justification = "<Pending>", Scope = "namespaceanddescendants", Target = "~N:NuExt.Minimal.Mvvm.SourceGenerator.Tests")]
 [assembly: SuppressMessage("Style", "IDE0130:Namespace does not match folder structure", Justification = "<Pending>", Scope = "namespace", Target = "~N:NuExt.Minimal.Mvvm.SourceGenerator.Tests")]

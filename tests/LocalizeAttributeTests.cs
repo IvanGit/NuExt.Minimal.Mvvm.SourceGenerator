@@ -7,7 +7,7 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
     internal class LocalizeAttributeTests : SourceGeneratorTestBase
     {
         [Test]
-        public void NotifyAttributePropertyNamesTest()
+        public void LocalizeAttributeTest()
         {
             var sources = LocalizeAttributes.Sources;
 
@@ -19,21 +19,15 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
             foreach (var (source, expected) in sources)
             {
                 var compilation = Compile(source);
-                var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation, ImmutableArray.Create<AdditionalText>(new AdditionalTextFileWrapper(jsonFilePath)));
+                var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation, [new AdditionalTextFileWrapper(jsonFilePath)
+                ]);
                 MultipleAssert(outputCompilation, diagnostics, generatorResult, GetExpectedSource(expected), false);
             }
         }
 
-        public class AdditionalTextFileWrapper : AdditionalText
+        public class AdditionalTextFileWrapper(string path) : AdditionalText
         {
-            private readonly string _path;
-
-            public AdditionalTextFileWrapper(string path)
-            {
-                _path = path;
-            }
-
-            public override string Path => _path;
+            public override string Path => path;
 
             public override SourceText GetText(CancellationToken cancellationToken = default)
             {

@@ -6,6 +6,21 @@ using System.Diagnostics;
 
 namespace Minimal.Mvvm.SourceGenerator
 {
+    internal ref struct NotifyPropertyGeneratorContext(IndentedTextWriter writer, IEnumerable<ISymbol> members, Compilation compilation, HashSet<string> propertyNames, bool useEventArgsCache)
+    {
+        internal readonly Compilation Compilation = compilation;
+        internal readonly IEnumerable<ISymbol> Members = members;
+        internal readonly HashSet<string> PropertyNames = propertyNames;
+        internal readonly bool UseEventArgsCache = useEventArgsCache;
+        internal readonly IndentedTextWriter Writer = writer;
+
+        internal string[]? Comment;
+        internal bool GenerateBackingFieldName;
+        internal string FullyQualifiedTypeName = null!;
+        internal string BackingFieldName = null!;
+        internal string PropertyName = null!;
+    }
+
     internal partial struct NotifyPropertyGenerator
     {
         internal const string BindableBaseFullyQualifiedName = "Minimal.Mvvm.BindableBase";
@@ -48,32 +63,30 @@ namespace Minimal.Mvvm.SourceGenerator
             return baseTypeSymbol != null && containingType.InheritsFromType(baseTypeSymbol);
         }
 
-        public static void Generate(IndentedTextWriter writer, IEnumerable<ISymbol> members, Compilation compilation, HashSet<string> propertyNames, bool useEventArgsCache, ref bool isFirst)
+        public static void Generate(scoped NotifyPropertyGeneratorContext ctx, ref bool isFirst)
         {
-            var nullableContextOptions = compilation.Options.NullableContextOptions;
-            foreach (var member in members)
+            foreach (var member in ctx.Members)
             {
                 switch (member)
                 {
                     case IFieldSymbol fieldSymbol:
-                        GenerateForField(writer, fieldSymbol, nullableContextOptions, propertyNames, useEventArgsCache, ref isFirst);
+                        GenerateForField(ctx, fieldSymbol, ref isFirst);
                         break;
                     case IMethodSymbol methodSymbol:
-                        GenerateForMethod(writer, methodSymbol, compilation, nullableContextOptions, propertyNames, useEventArgsCache, ref isFirst);
-                        break;
-                    default:
+                        GenerateForMethod(ctx, methodSymbol, ref isFirst);
                         break;
                 }
             }
         }
 
-        private static void GenerateProperty(IndentedTextWriter writer, string propertyName, string backingFieldName,
-            string fullyQualifiedTypeName, NotifyAttributeData notifyAttributeData, CallbackData callbackData,
+        private static void GenerateProperty(scoped NotifyPropertyGeneratorContext ctx, 
+            NotifyAttributeData notifyAttributeData, CallbackData callbackData,
             IEnumerable<CustomAttributeData> customAttributeData,
             IEnumerable<AlsoNotifyAttributeData> alsoNotifyAttributeData, 
-            string[]? comment, string nullable,
-            bool generateBackingFieldName, bool useEventArgsCache, ref bool isFirst)
+            ref bool isFirst)
         {
+            string nullable = ctx.Compilation.Options.NullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
+
             HashSet<AlsoNotifyAttributeData>? alsoNotifyPropertiesSet = null;
             List<AlsoNotifyAttributeData>? alsoNotifyProperties = null;
             foreach (var alsoNotifyAttribute in alsoNotifyAttributeData)
@@ -86,6 +99,8 @@ namespace Minimal.Mvvm.SourceGenerator
             }
             bool hasSetCondition = alsoNotifyProperties is { Count: > 0 };
 
+            var writer = ctx.Writer;
+
             if (!isFirst)
             {
                 writer.WriteLineNoTabs(string.Empty);
@@ -97,11 +112,11 @@ namespace Minimal.Mvvm.SourceGenerator
             string? backingCallbackFieldName = null;
             if (callbackData.CallbackName != null)
             {
-                backingCallbackFieldName = $"{backingFieldName}ChangedCallback";
+                backingCallbackFieldName = $"{ctx.BackingFieldName}ChangedCallback";
                 writer.Write("private global::System.Action");
                 if (callbackData.HasParameter)
                 {
-                    writer.Write($"<{fullyQualifiedTypeName}>");
+                    writer.Write($"<{ctx.FullyQualifiedTypeName}>");
                 }
                 writer.WriteLine($"{nullable} {backingCallbackFieldName};");
                 writer.WriteLineNoTabs(string.Empty);
@@ -111,21 +126,18 @@ namespace Minimal.Mvvm.SourceGenerator
 
             #region backingField
 
-            if (generateBackingFieldName)
+            if (ctx.GenerateBackingFieldName)
             {
-                writer.WriteLine($"private {fullyQualifiedTypeName} {backingFieldName};");
+                writer.WriteLine($"private {ctx.FullyQualifiedTypeName} {ctx.BackingFieldName};");
             }
 
             #endregion
 
             #region Comment
 
-            if (comment != null)
+            foreach (string line in ctx.Comment ?? [])
             {
-                foreach (string line in comment)
-                {
-                    writer.WriteLine($"/// {line}");
-                }
+                writer.WriteLine($"/// {line}");
             }
 
             #endregion
@@ -146,14 +158,14 @@ namespace Minimal.Mvvm.SourceGenerator
             {
                 writer.Write("virtual ");
             }*/
-            writer.WriteLine($"{fullyQualifiedTypeName} {propertyName}");
+            writer.WriteLine($"{ctx.FullyQualifiedTypeName} {ctx.PropertyName}");
             writer.WriteLine("{"); //begin property
             writer.Indent++;
 
             #region Property Getter
 
             writer.WriteAccessibility(notifyAttributeData.GetterAccessibility);
-            writer.WriteLine($"get => {backingFieldName};");
+            writer.WriteLine($"get => {ctx.BackingFieldName};");
 
             #endregion
 
@@ -172,17 +184,18 @@ namespace Minimal.Mvvm.SourceGenerator
             {
                 writer.Write(" => ");
             }
-            if (useEventArgsCache)
+            if (ctx.UseEventArgsCache)
             {
                 writer.Write(callbackData.CallbackName != null
-                    ? $"SetProperty(ref {backingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName}, {EventArgsCacheGenerator.EventArgsCacheFullyQualifiedName}.{propertyName}PropertyChanged)"
-                    : $"SetProperty(ref {backingFieldName}, value, {EventArgsCacheGenerator.EventArgsCacheFullyQualifiedName}.{propertyName}PropertyChanged)");
+                    ? $"SetProperty(ref {ctx.BackingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName}, {EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{ctx.PropertyName}PropertyChanged)"
+                    : $"SetProperty(ref {ctx.BackingFieldName}, value, {EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{ctx.PropertyName}PropertyChanged)");
+                ctx.PropertyNames.Add(ctx.PropertyName);
             }
             else
             {
                 writer.Write(callbackData.CallbackName != null
-                    ? $"SetProperty(ref {backingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName})"
-                    : $"SetProperty(ref {backingFieldName}, value)");
+                    ? $"SetProperty(ref {ctx.BackingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName})"
+                    : $"SetProperty(ref {ctx.BackingFieldName}, value)");
             }
             if (hasSetCondition)
             {
@@ -194,7 +207,16 @@ namespace Minimal.Mvvm.SourceGenerator
                 {
                     if (alsoNotifyProperties.Count == 1)
                     {
-                        writer.WriteLine($"RaisePropertyChanged(\"{alsoNotifyProperties.Single().PropertyName}\");");
+                        var propertyName = alsoNotifyProperties[0].PropertyName;
+                        if (ctx.UseEventArgsCache)
+                        {
+                            writer.WriteLine($"RaisePropertyChanged({EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{propertyName}PropertyChanged);");
+                            ctx.PropertyNames.Add(propertyName);
+                        }
+                        else
+                        {
+                            writer.WriteLine($"RaisePropertyChanged(\"{propertyName}\");");
+                        }
                     }
                     else
                     {
@@ -202,7 +224,16 @@ namespace Minimal.Mvvm.SourceGenerator
                         var separator = string.Empty;
                         foreach (var property in alsoNotifyProperties)
                         {
-                            writer.Write($"{separator}\"{property.PropertyName}\"");
+                            var propertyName = property.PropertyName;
+                            if (ctx.UseEventArgsCache)
+                            {
+                                writer.Write($"{separator}{EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{propertyName}PropertyChanged");
+                                ctx.PropertyNames.Add(propertyName);
+                            }
+                            else
+                            {
+                                writer.Write($"{separator}\"{propertyName}\"");
+                            }
                             separator = ", ";
                         }
                         writer.WriteLine(");");
