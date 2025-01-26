@@ -34,7 +34,6 @@ namespace Minimal.Mvvm.SourceGenerator
                 return;
             }
 
-            ctx.Comment = fieldSymbol.GetComment();
             var attributes = fieldSymbol.GetAttributes();
 
             var notifyAttribute = GetNotifyAttribute(attributes)!;
@@ -46,18 +45,18 @@ namespace Minimal.Mvvm.SourceGenerator
             var alsoNotifyAttributes = GetAlsoNotifyAttributes(attributes);
             var alsoNotifyAttributeData = GetAlsoNotifyAttributeData(alsoNotifyAttributes);
 
-            ctx.BackingFieldName = fieldSymbol.Name;
-            ctx.PropertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromFieldName(ctx.BackingFieldName);
+            var backingFieldName = fieldSymbol.Name;
+            var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromFieldName(backingFieldName);
 
             var propertyType = fieldSymbol.Type;
 
-            ctx.FullyQualifiedTypeName = propertyType.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName);
+            var fullyQualifiedTypeName = propertyType.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName);
 
             var callbackData = GetCallbackData(fieldSymbol.ContainingType, propertyType, notifyAttributeData);
 
-            ctx.GenerateBackingFieldName = false;
+            var propCtx = new NotifyPropertyContext(notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, fieldSymbol.GetComment(), fullyQualifiedTypeName, propertyName, backingFieldName, false);
 
-            GenerateProperty(ctx, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, ref isFirst);
+            GenerateProperty(ctx, propCtx, ref isFirst);
         }
 
         private static string GetPropertyNameFromFieldName(string backingFieldName)

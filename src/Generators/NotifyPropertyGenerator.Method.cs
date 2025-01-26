@@ -47,7 +47,6 @@ namespace Minimal.Mvvm.SourceGenerator
 
         private static void GenerateForMethod(scoped NotifyPropertyGeneratorContext ctx, IMethodSymbol methodSymbol, ref bool isFirst)
         {
-            ctx.Comment = methodSymbol.GetComment();
             var attributes = methodSymbol.GetAttributes();
 
             var notifyAttribute = GetNotifyAttribute(attributes)!;
@@ -59,20 +58,20 @@ namespace Minimal.Mvvm.SourceGenerator
             var alsoNotifyAttributes = GetAlsoNotifyAttributes(attributes);
             var alsoNotifyAttributeData = GetAlsoNotifyAttributeData(alsoNotifyAttributes);
 
-            ctx.PropertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromMethodName(methodSymbol.Name);
+            var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromMethodName(methodSymbol.Name);
 
-            ctx.BackingFieldName = GetBackingFieldNameFromPropertyName(ctx.PropertyName);
+            var backingFieldName = GetBackingFieldNameFromPropertyName(propertyName);
 
             var propertyType = GetCommandTypeName(ctx.Compilation, methodSymbol);
 
             var callbackData = GetCallbackData(methodSymbol.ContainingType, propertyType, notifyAttributeData);
 
             string nullable = ctx.Compilation.Options.NullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
-            ctx.FullyQualifiedTypeName = $"{propertyType?.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName)}{nullable}";
+            var fullyQualifiedTypeName = $"{propertyType?.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName)}{nullable}";
 
-            ctx.GenerateBackingFieldName = true;
+            var propCtx = new NotifyPropertyContext(notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, methodSymbol.GetComment(), fullyQualifiedTypeName, propertyName, backingFieldName, true);
 
-            GenerateProperty(ctx, notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, ref isFirst);
+            GenerateProperty(ctx, propCtx, ref isFirst);
         }
 
         private static INamedTypeSymbol? GetCommandTypeName(Compilation compilation, IMethodSymbol methodSymbol)

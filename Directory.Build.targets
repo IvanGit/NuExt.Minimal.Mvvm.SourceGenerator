@@ -1,15 +1,10 @@
 <Project>
-
   <ItemGroup>
-    <Compile Update="**\*.EventArgsCache.cs">
-      <DependentUpon>$([System.String]::Copy('%(Filename)').Replace('.EventArgsCache', '.cs'))</DependentUpon>
-    </Compile>
-    <Compile Update="**\*.Field.cs">
-      <DependentUpon>$([System.String]::Copy('%(Filename)').Replace('.Field', '.cs'))</DependentUpon>
-    </Compile>
-    <Compile Update="**\*.Method.cs">
-      <DependentUpon>$([System.String]::Copy('%(Filename)').Replace('.Method', '.cs'))</DependentUpon>
+    <CsFiles Include="**\*.*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="@(CsFiles)">
+      <DependentUpon>$([System.Text.RegularExpressions.Regex]::Replace('%(Filename)', '\..*$', '.cs'))</DependentUpon>
     </Compile>
   </ItemGroup>
-
 </Project>

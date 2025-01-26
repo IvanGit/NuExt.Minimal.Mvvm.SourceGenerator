@@ -6,23 +6,32 @@ using System.Diagnostics;
 
 namespace Minimal.Mvvm.SourceGenerator
 {
-    internal ref struct NotifyPropertyGeneratorContext(IndentedTextWriter writer, IEnumerable<ISymbol> members, Compilation compilation, HashSet<string> propertyNames, bool useEventArgsCache)
+    internal readonly ref struct NotifyPropertyGeneratorContext(IndentedTextWriter writer, IEnumerable<ISymbol> members, Compilation compilation, HashSet<string> propertyNames, bool useEventArgsCache)
     {
         internal readonly Compilation Compilation = compilation;
         internal readonly IEnumerable<ISymbol> Members = members;
         internal readonly HashSet<string> PropertyNames = propertyNames;
         internal readonly bool UseEventArgsCache = useEventArgsCache;
         internal readonly IndentedTextWriter Writer = writer;
-
-        internal string[]? Comment;
-        internal bool GenerateBackingFieldName;
-        internal string FullyQualifiedTypeName = null!;
-        internal string BackingFieldName = null!;
-        internal string PropertyName = null!;
     }
 
     internal partial struct NotifyPropertyGenerator
     {
+        private readonly ref struct NotifyPropertyContext(NotifyAttributeData attributeData, CallbackData callbackData, 
+            IEnumerable<CustomAttributeData> customAttributes, IEnumerable<AlsoNotifyAttributeData> alsoNotifyAttributes, 
+            string[]? comment, string fullyQualifiedTypeName, string propertyName, string backingFieldName, bool generateBackingFieldName)
+        {
+            internal readonly IEnumerable<AlsoNotifyAttributeData> AlsoNotifyAttributes = alsoNotifyAttributes;
+            internal readonly NotifyAttributeData NotifyAttributeData = attributeData;
+            internal readonly CallbackData CallbackData = callbackData;
+            internal readonly string[]? Comment = comment;
+            internal readonly IEnumerable<CustomAttributeData> CustomAttributes = customAttributes;
+            internal readonly bool GenerateBackingFieldName = generateBackingFieldName;
+            internal readonly string FullyQualifiedTypeName = fullyQualifiedTypeName;
+            internal readonly string BackingFieldName = backingFieldName;
+            internal readonly string PropertyName = propertyName;
+        }
+
         internal const string BindableBaseFullyQualifiedName = "Minimal.Mvvm.BindableBase";
         internal const string AlsoNotifyAttributeFullyQualifiedName = "global::Minimal.Mvvm.AlsoNotifyAttribute";
         internal const string CustomAttributeFullyQualifiedName = "global::Minimal.Mvvm.CustomAttributeAttribute";
@@ -79,17 +88,13 @@ namespace Minimal.Mvvm.SourceGenerator
             }
         }
 
-        private static void GenerateProperty(scoped NotifyPropertyGeneratorContext ctx, 
-            NotifyAttributeData notifyAttributeData, CallbackData callbackData,
-            IEnumerable<CustomAttributeData> customAttributeData,
-            IEnumerable<AlsoNotifyAttributeData> alsoNotifyAttributeData, 
-            ref bool isFirst)
+        private static void GenerateProperty(scoped NotifyPropertyGeneratorContext genCtx, scoped NotifyPropertyContext propCtx, ref bool isFirst)
         {
-            string nullable = ctx.Compilation.Options.NullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
+            string nullable = genCtx.Compilation.Options.NullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
 
             HashSet<AlsoNotifyAttributeData>? alsoNotifyPropertiesSet = null;
             List<AlsoNotifyAttributeData>? alsoNotifyProperties = null;
-            foreach (var alsoNotifyAttribute in alsoNotifyAttributeData)
+            foreach (var alsoNotifyAttribute in propCtx.AlsoNotifyAttributes)
             {
                 if (!(alsoNotifyPropertiesSet ??= []).Add(alsoNotifyAttribute))
                 {
@@ -99,7 +104,7 @@ namespace Minimal.Mvvm.SourceGenerator
             }
             bool hasSetCondition = alsoNotifyProperties is { Count: > 0 };
 
-            var writer = ctx.Writer;
+            var writer = genCtx.Writer;
 
             if (!isFirst)
             {
@@ -110,13 +115,13 @@ namespace Minimal.Mvvm.SourceGenerator
             #region Callback caching field
 
             string? backingCallbackFieldName = null;
-            if (callbackData.CallbackName != null)
+            if (propCtx.CallbackData.CallbackName != null)
             {
-                backingCallbackFieldName = $"{ctx.BackingFieldName}ChangedCallback";
+                backingCallbackFieldName = $"{propCtx.BackingFieldName}ChangedCallback";
                 writer.Write("private global::System.Action");
-                if (callbackData.HasParameter)
+                if (propCtx.CallbackData.HasParameter)
                 {
-                    writer.Write($"<{ctx.FullyQualifiedTypeName}>");
+                    writer.Write($"<{propCtx.FullyQualifiedTypeName}>");
                 }
                 writer.WriteLine($"{nullable} {backingCallbackFieldName};");
                 writer.WriteLineNoTabs(string.Empty);
@@ -126,16 +131,16 @@ namespace Minimal.Mvvm.SourceGenerator
 
             #region backingField
 
-            if (ctx.GenerateBackingFieldName)
+            if (propCtx.GenerateBackingFieldName)
             {
-                writer.WriteLine($"private {ctx.FullyQualifiedTypeName} {ctx.BackingFieldName};");
+                writer.WriteLine($"private {propCtx.FullyQualifiedTypeName} {propCtx.BackingFieldName};");
             }
 
             #endregion
 
             #region Comment
 
-            foreach (string line in ctx.Comment ?? [])
+            foreach (string line in propCtx.Comment ?? [])
             {
                 writer.WriteLine($"/// {line}");
             }
@@ -144,7 +149,7 @@ namespace Minimal.Mvvm.SourceGenerator
 
             #region Custom Attributes
 
-            foreach (var customAttribute in customAttributeData)
+            foreach (var customAttribute in propCtx.CustomAttributes)
             {
                 writer.WriteLine(customAttribute.Attribute);
             }
@@ -153,25 +158,25 @@ namespace Minimal.Mvvm.SourceGenerator
 
             #region Property
 
-            writer.WriteAccessibility(notifyAttributeData.PropertyAccessibility);
+            writer.WriteAccessibility(propCtx.NotifyAttributeData.PropertyAccessibility);
             /*if (notifyAttributeData.IsVirtual)
             {
                 writer.Write("virtual ");
             }*/
-            writer.WriteLine($"{ctx.FullyQualifiedTypeName} {ctx.PropertyName}");
+            writer.WriteLine($"{propCtx.FullyQualifiedTypeName} {propCtx.PropertyName}");
             writer.WriteLine("{"); //begin property
             writer.Indent++;
 
             #region Property Getter
 
-            writer.WriteAccessibility(notifyAttributeData.GetterAccessibility);
-            writer.WriteLine($"get => {ctx.BackingFieldName};");
+            writer.WriteAccessibility(propCtx.NotifyAttributeData.GetterAccessibility);
+            writer.WriteLine($"get => {propCtx.BackingFieldName};");
 
             #endregion
 
             #region Property Setter
 
-            writer.WriteAccessibility(notifyAttributeData.SetterAccessibility);
+            writer.WriteAccessibility(propCtx.NotifyAttributeData.SetterAccessibility);
             writer.Write("set");
             if (hasSetCondition)
             {
@@ -184,18 +189,18 @@ namespace Minimal.Mvvm.SourceGenerator
             {
                 writer.Write(" => ");
             }
-            if (ctx.UseEventArgsCache)
+            if (genCtx.UseEventArgsCache)
             {
-                writer.Write(callbackData.CallbackName != null
-                    ? $"SetProperty(ref {ctx.BackingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName}, {EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{ctx.PropertyName}PropertyChanged)"
-                    : $"SetProperty(ref {ctx.BackingFieldName}, value, {EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{ctx.PropertyName}PropertyChanged)");
-                ctx.PropertyNames.Add(ctx.PropertyName);
+                writer.Write(propCtx.CallbackData.CallbackName != null
+                    ? $"SetProperty(ref {propCtx.BackingFieldName}, value, {backingCallbackFieldName} ??= {propCtx.CallbackData.CallbackName}, {EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{propCtx.PropertyName}PropertyChanged)"
+                    : $"SetProperty(ref {propCtx.BackingFieldName}, value, {EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{propCtx.PropertyName}PropertyChanged)");
+                genCtx.PropertyNames.Add(propCtx.PropertyName);
             }
             else
             {
-                writer.Write(callbackData.CallbackName != null
-                    ? $"SetProperty(ref {ctx.BackingFieldName}, value, {backingCallbackFieldName} ??= {callbackData.CallbackName})"
-                    : $"SetProperty(ref {ctx.BackingFieldName}, value)");
+                writer.Write(propCtx.CallbackData.CallbackName != null
+                    ? $"SetProperty(ref {propCtx.BackingFieldName}, value, {backingCallbackFieldName} ??= {propCtx.CallbackData.CallbackName})"
+                    : $"SetProperty(ref {propCtx.BackingFieldName}, value)");
             }
             if (hasSetCondition)
             {
@@ -208,10 +213,10 @@ namespace Minimal.Mvvm.SourceGenerator
                     if (alsoNotifyProperties.Count == 1)
                     {
                         var propertyName = alsoNotifyProperties[0].PropertyName;
-                        if (ctx.UseEventArgsCache)
+                        if (genCtx.UseEventArgsCache)
                         {
                             writer.WriteLine($"RaisePropertyChanged({EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{propertyName}PropertyChanged);");
-                            ctx.PropertyNames.Add(propertyName);
+                            genCtx.PropertyNames.Add(propertyName);
                         }
                         else
                         {
@@ -225,10 +230,10 @@ namespace Minimal.Mvvm.SourceGenerator
                         foreach (var property in alsoNotifyProperties)
                         {
                             var propertyName = property.PropertyName;
-                            if (ctx.UseEventArgsCache)
+                            if (genCtx.UseEventArgsCache)
                             {
                                 writer.Write($"{separator}{EventArgsCacheGenerator.GeneratedClassFullyQualifiedName}.{propertyName}PropertyChanged");
-                                ctx.PropertyNames.Add(propertyName);
+                                genCtx.PropertyNames.Add(propertyName);
                             }
                             else
                             {
