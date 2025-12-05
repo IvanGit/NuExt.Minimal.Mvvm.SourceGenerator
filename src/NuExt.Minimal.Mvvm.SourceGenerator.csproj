@@ -4,6 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors Condition="'$(Configuration)' == 'Release'">true</TreatWarningsAsErrors>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <IncludeSymbols>false</IncludeSymbols>
@@ -12,7 +13,7 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageTags>nuext;minimal;mvvm;wpf;ui;windows;viewmodel;command;relaycommand;asynccommand;sourcegenerator;generator;async</PackageTags>
     <Description>This package allows you to generate boilerplate code at compile time specifically for ViewModels using the Minimal MVVM Framework, thereby streamlining your development process and reducing repetitive tasks.</Description>
-    <Version>0.3.2</Version>
+    <Version>0.4.0</Version>
     <RootNamespace>Minimal.Mvvm.SourceGenerator</RootNamespace>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>logo128.png</PackageIcon>
@@ -20,8 +21,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" PrivateAssets="all" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" GeneratePathProperty="true" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" PrivateAssets="all" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" GeneratePathProperty="true" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

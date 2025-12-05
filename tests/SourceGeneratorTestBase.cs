@@ -20,7 +20,9 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
             var tree = CSharpSyntaxTree.ParseText(code);
 
             var references =
-#if NET9_0
+#if NET10_0
+                Basic.Reference.Assemblies.Net100.References.All.Cast<MetadataReference>()
+#elif NET9_0
                 Basic.Reference.Assemblies.Net90.References.All.Cast<MetadataReference>()
 #elif NET8_0
                 Basic.Reference.Assemblies.Net80.References.All.Cast<MetadataReference>()

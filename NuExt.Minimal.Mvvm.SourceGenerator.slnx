@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="src/NuExt.Minimal.Mvvm.SourceGenerator.csproj" />
+  <Project Path="tests/NuExt.Minimal.Mvvm.SourceGenerator.Tests.csproj" />
+</Solution>
