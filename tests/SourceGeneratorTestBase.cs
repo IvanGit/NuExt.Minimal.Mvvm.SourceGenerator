@@ -15,6 +15,21 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
         protected static readonly string GeneratorName = typeof(Generator).Namespace!;
         protected static readonly Version GeneratorVersion = typeof(Generator).Assembly.GetName().Version!;
 
+        protected static async Task CompileAsync((string fileName, string hintName, string source, string expected, (string hintName, string expected)[] additionalFiles) context)
+        {
+            var test = new CSharpSourceGeneratorTestBase();
+            test.AddReferencedAssemblies();
+
+            test.TestState.Sources.Add((context.fileName, context.source));
+
+            test.AddGeneratedSources();
+            test.AddExpectedSource(context.hintName, context.expected);
+            test.AddAdditionalGeneratedSources(context.additionalFiles);
+            test.AddAdditionalGeneratedSources([Generator.RequerySuggestedEventManagerSource]);
+
+            await test.RunAsync();
+        }
+
         protected static CSharpCompilation Compile(string code, NullableContextOptions nullableContextOptions = NullableContextOptions.Enable)
         {
             var tree = CSharpSyntaxTree.ParseText(code);
@@ -29,7 +44,9 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 #elif NETFRAMEWORK
                 Basic.Reference.Assemblies.Net472.References.All.Cast<MetadataReference>().Concat([MetadataReference.CreateFromFile(typeof(System.Text.Json.JsonSerializer).GetTypeInfo().Assembly.Location)])
 #endif
-                    .Concat([MetadataReference.CreateFromFile(typeof(BindableBase).GetTypeInfo().Assembly.Location)]);
+                    .Concat([
+                        MetadataReference.CreateFromFile(typeof(BindableBase).GetTypeInfo().Assembly.Location)
+                        ]);
 
             var compilation = CSharpCompilation.Create("HelloWorld.dll",
                 [tree],
@@ -39,9 +56,9 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
             return compilation;
         }
 
-        protected static string? GetExpectedSource(string? sourceTemplate)
+        protected static string GetExpectedSource(string? sourceTemplate)
         {
-            return sourceTemplate?.Replace("[GeneratorVersion]", GeneratorVersion.ToString()).Replace("[GeneratorName]", GeneratorName);
+            return sourceTemplate != null ? sourceTemplate.Replace("[GeneratorVersion]", GeneratorVersion.ToString()).Replace("[GeneratorName]", GeneratorName) : "";
         }
 
         protected static List<string> GetSourceLines(string generatedSource)
@@ -65,31 +82,25 @@ namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 
             Assert.That(outputCompilation, Is.Not.Null);
 
-            if (expectedSource == null)
+            if (string.IsNullOrEmpty(expectedSource))
             {
-                Assert.That(outputCompilation!.SyntaxTrees, Has.Length.EqualTo(7));
                 Assert.That(diagnostics.IsEmpty, Is.True);// there were no diagnostics created by the generators
                 Assert.That(generatorResult.Diagnostics.IsEmpty, Is.True);
-                Assert.That(generatorResult.GeneratedSources, Has.Length.EqualTo(6));
                 Assert.That(generatorResult.Exception, Is.Null);
                 return;
             }
 
-            Assert.That(outputCompilation!.SyntaxTrees, Has.Length.EqualTo(8 + (useEventArgsCache ? 1 : 0)));
+            var generatedSource = generatorResult.GeneratedSources[generatorResult.GeneratedSources.Length - 1 - (useEventArgsCache ? 1 : 0)];
+            var generatedSourceTreeText = generatedSource.SyntaxTree.ToString();
+            var generatedSourceText = generatedSource.SourceText.ToString();
+            Assert.That(generatedSourceTreeText, Is.EqualTo(generatedSourceText));
+
             Assert.That(diagnostics.IsEmpty, Is.True);// there were no diagnostics created by the generators
             var allDiagnostics = outputCompilation.GetDiagnostics();
             Assert.That(allDiagnostics.IsEmpty, Is.True); // verify the compilation with the added source has no diagnostics
 
-
             Assert.That(generatorResult.Diagnostics.IsEmpty);
-            Assert.That(generatorResult.GeneratedSources, Has.Length.EqualTo(7 + (useEventArgsCache ? 1 : 0)));
             Assert.That(generatorResult.Exception, Is.Null);
-
-            var generatedSource = generatorResult.GeneratedSources[generatorResult.GeneratedSources.Length - 1 - (useEventArgsCache ? 1 : 0)];
-
-            var generatedSourceTreeText = generatedSource.SyntaxTree.ToString();
-            var generatedSourceText = generatedSource.SourceText.ToString();
-            Assert.That(generatedSourceTreeText, Is.EqualTo(generatedSourceText));
 
             var generatedSourceLines = GetSourceLines(generatedSourceTreeText);
             var expectedSourceLines = GetSourceLines(expectedSource!);

@@ -17,7 +17,7 @@ namespace Minimal.Mvvm.SourceGenerator
 
     internal struct LocalizePropertyGenerator
     {
-        internal const string LocalizeAttributeFullyQualifiedName = "Minimal.Mvvm.LocalizeAttribute";
+        internal const string LocalizeAttributeFullyQualifiedMetadataName = "Minimal.Mvvm.LocalizeAttribute";
 
         private readonly record struct LocalizeAttributeData(string? JsonFileName);
 

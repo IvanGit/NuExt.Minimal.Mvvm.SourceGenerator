@@ -1,6 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
-using System.Collections.Immutable;
 
 namespace NuExt.Minimal.Mvvm.SourceGenerator.Tests
 {

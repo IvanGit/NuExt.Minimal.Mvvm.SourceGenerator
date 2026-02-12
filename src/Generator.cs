@@ -26,7 +26,7 @@ namespace Minimal.Mvvm.SourceGenerator
 
         #region Sources
 
-        private static readonly (string hintName, string source)[] s_sources = [
+        internal static readonly (string hintName, string source)[] Sources = [
             (hintName : "Minimal.Mvvm.AccessModifier.g.cs", source : """
             /// <summary>
             /// Enum to define access modifiers.
@@ -202,7 +202,59 @@ namespace Minimal.Mvvm.SourceGenerator
                 }
             }
             """),
+            (hintName : "Minimal.Mvvm.UseCommandManagerAttribute.g.cs", source : """
+                using System;
+
+                namespace Minimal.Mvvm
+                {
+                    /// <summary>
+                    /// Enables automatic IRelayCommand.CanExecute re-evaluation for generated commands
+                    /// by subscribing to the WPF CommandManager.RequerySuggested event.
+                    /// </summary>
+                    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Method, Inherited = false, AllowMultiple = false)]
+                    internal sealed class UseCommandManagerAttribute : Attribute
+                    {
+                        /// <summary>
+                        /// Initializes a new instance of the <see cref="UseCommandManagerAttribute"/> class.
+                        /// </summary>
+                        public UseCommandManagerAttribute()
+                        {
+
+                        }
+                    }
+                }
+                """),
         ];
+
+        internal static readonly (string hintName, string source) RequerySuggestedEventManagerSource = ("Minimal.Mvvm.RequerySuggestedEventManager.g.cs", """
+            namespace Minimal.Mvvm
+            {
+                internal static class RequerySuggestedEventManager
+                {
+                    private static readonly global::System.Reflection.MethodInfo s_handlerMethod = typeof(RequerySuggestedEventManager).GetMethod(nameof(HandleRequerySuggested)) ?? throw new global::System.NullReferenceException();
+
+                    public static void HandleRequerySuggested(global::Minimal.Mvvm.IRelayCommand? command, object? sender, global::System.EventArgs e)
+                    {
+                        command?.RaiseCanExecuteChanged();
+                    }
+
+                    public static void AddHandler(global::Minimal.Mvvm.IRelayCommand? command)
+                    {
+                        if (command == null) return;
+                        var handler = (global::System.EventHandler)global::System.Delegate.CreateDelegate(typeof(global::System.EventHandler), command, s_handlerMethod);
+                        global::System.Windows.Input.CommandManager.RequerySuggested -= handler;
+                        global::System.Windows.Input.CommandManager.RequerySuggested += handler;
+                    }
+
+                    public static void RemoveHandler(global::Minimal.Mvvm.IRelayCommand? command)
+                    {
+                        if (command == null) return;
+                        var handler = (global::System.EventHandler)global::System.Delegate.CreateDelegate(typeof(global::System.EventHandler), command, s_handlerMethod);
+                        global::System.Windows.Input.CommandManager.RequerySuggested -= handler;
+                    }
+                }
+            }
+            """);
 
         #endregion
 
@@ -212,13 +264,13 @@ namespace Minimal.Mvvm.SourceGenerator
             Func<SyntaxNode, CancellationToken, bool> predicate,
             Func<GeneratorAttributeSyntaxContext, CancellationToken, (ISymbol member, ImmutableArray<AttributeData> attributes, AttributeType attributeType)> transform)[] s_pipelines =
         [
-            (fullyQualifiedMetadataName: NotifyPropertyGenerator.NotifyAttributeFullyQualifiedName,
+            (fullyQualifiedMetadataName: NotifyPropertyGenerator.NotifyAttributeFullyQualifiedMetadataName,
                 predicate: NotifyPropertyGenerator.IsValidSyntaxNode,
                 transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Notify)),
-            (fullyQualifiedMetadataName: NotifyDataErrorInfoGenerator.NotifyDataErrorInfoAttributeFullyQualifiedName,
+            (fullyQualifiedMetadataName: NotifyDataErrorInfoGenerator.NotifyDataErrorInfoAttributeFullyQualifiedMetadataName,
                 predicate: NotifyDataErrorInfoGenerator.IsValidSyntaxNode,
                 transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.NotifyDataErrorInfo)),
-            (fullyQualifiedMetadataName: LocalizePropertyGenerator.LocalizeAttributeFullyQualifiedName,
+            (fullyQualifiedMetadataName: LocalizePropertyGenerator.LocalizeAttributeFullyQualifiedMetadataName,
                 predicate: LocalizePropertyGenerator.IsValidSyntaxNode,
                 transform: static (context, _) => (member: context.TargetSymbol, attributes: context.Attributes, AttributeType.Localize))
         ];
@@ -238,7 +290,7 @@ namespace Minimal.Mvvm.SourceGenerator
 
             context.RegisterPostInitializationOutput(static postInitializationContext =>
             {
-                foreach ((string hintName, string source) in s_sources)
+                foreach ((string hintName, string source) in Sources)
                 {
                     postInitializationContext.AddSource(hintName, source);
                 }
@@ -326,9 +378,9 @@ namespace Minimal.Mvvm.SourceGenerator
                     return;
                 }
 
-                var sb = new StringBuilder();
-                var outerTypes = new List<string>();
-                var propertyNames = new HashSet<string>();
+                var sb = new StringBuilder(2048);
+                var outerTypes = new List<string>(4);
+                var genCtx = new GeneratorContext(new HashSet<string>(StringComparer.Ordinal), new List<string>(4));
                 foreach (var typeInfo in typeInfos)
                 {
                     var containingType = typeInfo.Key;
@@ -352,7 +404,7 @@ namespace Minimal.Mvvm.SourceGenerator
                     {
                         var outerType = outerTypes[i];
                         writer.WriteLine($"partial {outerType}");
-                        writer.WriteLine("{");
+                        writer.WriteLine('{');
                         writer.Indent++;
                     }
 
@@ -362,7 +414,7 @@ namespace Minimal.Mvvm.SourceGenerator
                         switch (group.Key)
                         {
                             case AttributeType.Notify:
-                                NotifyPropertyGenerator.Generate(new NotifyPropertyGeneratorContext(writer, group.Select(m => m.member), compilation, propertyNames, useEventArgsCache: true), ref isFirst);
+                                NotifyPropertyGenerator.Generate(new NotifyPropertyGeneratorContext(writer, group.Select(m => m.member), compilation, genCtx, containingType.Name + '.', useEventArgsCache: true), ref isFirst);
                                 break;
 
                             case AttributeType.NotifyDataErrorInfo:
@@ -381,7 +433,7 @@ namespace Minimal.Mvvm.SourceGenerator
                     for (int i = 0; i < outerTypes.Count; i++)
                     {
                         writer.Indent--;
-                        writer.WriteLine("}");
+                        writer.WriteLine('}');
                     }
 
                     writer.WriteSourceFinished(containingNamespace);
@@ -400,13 +452,13 @@ namespace Minimal.Mvvm.SourceGenerator
                     context.AddSource(generatedFileName, sourceText);
                 }// foreach (var pair in typeInfos)
 
-                if (propertyNames.Count > 0)
+                if (genCtx.CachedPropertyNames.Count > 0)
                 {
                     sb.Clear();
                     using var writer = new IndentedTextWriter(new StringWriter(sb));
                     writer.WriteSourceHeader(nullableContextOptions, EventArgsCacheGenerator.GeneratedNamespace);
 
-                    var properties = propertyNames.ToList();
+                    var properties = genCtx.CachedPropertyNames.ToList();
                     properties.Sort();
                     EventArgsCacheGenerator.Generate(new EventArgsCacheGeneratorContext(writer, properties));
 
@@ -415,7 +467,23 @@ namespace Minimal.Mvvm.SourceGenerator
 
                     context.AddSource($"{EventArgsCacheGenerator.GeneratedNamespace}.{EventArgsCacheGenerator.GeneratedClassName}.g.cs", sourceText);
                 }
+
+                if (genCtx.CommandManagerPropertyNames.Count > 0)
+                {
+                    context.AddSource(RequerySuggestedEventManagerSource.hintName, RequerySuggestedEventManagerSource.source);
+                }
             });
+        }
+
+        #endregion
+
+        #region Helpers
+
+        public class GeneratorContext(HashSet<string> cachedPropertyNames, List<string> commandManagerPropertyNames)
+        {
+            internal HashSet<string> CachedPropertyNames => cachedPropertyNames;
+
+            internal List<string> CommandManagerPropertyNames => commandManagerPropertyNames;
         }
 
         #endregion

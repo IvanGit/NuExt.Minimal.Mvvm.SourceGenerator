@@ -70,13 +70,37 @@
         [Test]
         public void NotifyAttributeCommandsTest()
         {
-            var sources = Commands.EventArgsCacheSources;
+            var sources = Commands.Sources;
 
             foreach (var (source, expected) in sources)
             {
                 var compilation = Compile(source);
                 var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation);
                 MultipleAssert(outputCompilation, diagnostics, generatorResult, GetExpectedSource(expected));
+            }
+        }
+
+        [Test]
+        public void NotifyAttributeCancellableCommandsTest()
+        {
+            var sources = Commands.CancellationSources;
+
+            foreach (var (source, expected) in sources)
+            {
+                var compilation = Compile(source);
+                var (outputCompilation, diagnostics, generatorResult) = RunGenerator(compilation);
+                MultipleAssert(outputCompilation, diagnostics, generatorResult, GetExpectedSource(expected));
+            }
+        }
+
+        [Test]
+        public async Task UseCommandManagerCommandsTest()
+        {
+            var sources = Commands.UseCommandManagerSources;
+
+            foreach (var source in sources)
+            {
+                await CompileAsync(source);
             }
         }
     }

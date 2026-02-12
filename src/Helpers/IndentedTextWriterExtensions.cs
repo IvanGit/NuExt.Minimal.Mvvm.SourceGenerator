@@ -19,7 +19,6 @@ namespace Minimal.Mvvm.SourceGenerator
             {
                 writer.WriteNullableContext(nullableContextOptions);
                 writer.WriteLine();
-                writer.WriteLine();
             }
 
             if (!string.IsNullOrEmpty(containingNamespace))//begin namespace
@@ -69,16 +68,16 @@ namespace Minimal.Mvvm.SourceGenerator
             switch (nullableContextOptions)
             {
                 case NullableContextOptions.Disable:
-                    writer.Write("#nullable disable");
+                    writer.WriteLine("#nullable disable");
                     break;
                 case NullableContextOptions.Warnings:
-                    writer.Write("#nullable enable warnings");
+                    writer.WriteLine("#nullable enable warnings");
                     break;
                 case NullableContextOptions.Annotations:
-                    writer.Write("#nullable enable annotations");
+                    writer.WriteLine("#nullable enable annotations");
                     break;
                 case NullableContextOptions.Enable:
-                    writer.Write("#nullable enable");
+                    writer.WriteLine("#nullable enable");
                     break;
             }
         }

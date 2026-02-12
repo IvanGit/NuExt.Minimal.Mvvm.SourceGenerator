@@ -37,26 +37,39 @@ namespace Minimal.Mvvm.SourceGenerator
             var attributes = fieldSymbol.GetAttributes();
 
             var notifyAttribute = GetNotifyAttribute(attributes)!;
-            var notifyAttributeData = GetNotifyAttributeData(notifyAttribute);
-
-            var customAttributes = GetCustomAttributes(attributes);
-            var customAttributeData = GetCustomAttributeData(customAttributes);
-
             var alsoNotifyAttributes = GetAlsoNotifyAttributes(attributes);
+            var customAttributes = GetCustomAttributes(attributes);
+            var useCommandManagerAttribute = GetUseCommandManagerAttribute(attributes);
+
+            var notifyAttributeData = GetNotifyAttributeData(notifyAttribute);
             var alsoNotifyAttributeData = GetAlsoNotifyAttributeData(alsoNotifyAttributes);
+            var customAttributeData = GetCustomAttributeData(customAttributes);
+            var useCommandManagerAttributeData = GetUseCommandManagerAttributeData(useCommandManagerAttribute);
 
             var backingFieldName = fieldSymbol.Name;
             var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromFieldName(backingFieldName);
 
             var propertyType = fieldSymbol.Type;
 
+            bool isCommand = GetIsCommand(ctx.Compilation, propertyType);
+
             var fullyQualifiedTypeName = propertyType.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName);
 
             var callbackData = GetCallbackData(fieldSymbol.ContainingType, propertyType, notifyAttributeData);
 
-            var propCtx = new NotifyPropertyContext(notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, fieldSymbol.GetComment(), fullyQualifiedTypeName, propertyName, backingFieldName, false);
+            var propCtx = new NotifyPropertyContext(notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData,
+                useCommandManagerAttributeData, isCommand, fieldSymbol.GetComment(), fullyQualifiedTypeName, propertyName, backingFieldName, false);
 
             GenerateProperty(ctx, propCtx, ref isFirst);
+        }
+
+        private static bool GetIsCommand(Compilation compilation, ITypeSymbol? propertyType)
+        {
+            if (propertyType == null) return false;
+            var baseTypeSymbol = compilation.GetTypeByMetadataName("Minimal.Mvvm.IRelayCommand");
+            if (baseTypeSymbol != null && propertyType.IsAssignableFromType(baseTypeSymbol))
+                return true;
+            return false;
         }
 
         private static string GetPropertyNameFromFieldName(string backingFieldName)

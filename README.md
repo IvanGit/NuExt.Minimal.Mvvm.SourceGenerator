@@ -15,19 +15,20 @@
 ### Commonly Used Types
 
 - **`Minimal.Mvvm.NotifyAttribute`**: Generates a property for a backing field or a command for a method.
-- **`Minimal.Mvvm.AlsoNotifyAttribute`**: Notifies additional properties  when the annotated property changes.
+- **`Minimal.Mvvm.AlsoNotifyAttribute`**: Notifies additional properties when the annotated property changes.
 - **`Minimal.Mvvm.LocalizeAttribute`**: Localizes the target class using the provided JSON file.
 - **`Minimal.Mvvm.CustomAttributeAttribute`**: Specifies a fully qualified attribute name to be applied to a generated property.
+- **`Minimal.Mvvm.UseCommandManagerAttribute`**: Enables automatic `CanExecute` reevaluation for the generated command property by subscribing to the WPF `CommandManager.RequerySuggested` event.
 
 ### Installation
 
-You can install `NuExt.Minimal.Mvvm.SourceGenerator` via [NuGet](https://www.nuget.org/):
+Via [NuGet](https://www.nuget.org/):
 
 ```sh
 dotnet add package NuExt.Minimal.Mvvm.SourceGenerator
 ```
 
-Or through the Visual Studio package manager:
+Or via Visual Studio:
 
 1. Go to `Tools -> NuGet Package Manager -> Manage NuGet Packages for Solution...`.
 2. Search for `NuExt.Minimal.Mvvm.SourceGenerator`.
@@ -35,16 +36,16 @@ Or through the Visual Studio package manager:
 
 ### Dependencies
 
-To use this source generator effectively, you need to have any of these packages installed in your project: [`NuExt.Minimal.Mvvm`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm), [`NuExt.Minimal.Mvvm.Windows`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.Windows), or [`NuExt.Minimal.Mvvm.MahApps.Metro`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.MahApps.Metro). You can add them via NuGet as well:
+To use this source generator effectively, you need to have any of these packages installed in your project: [`NuExt.Minimal.Mvvm`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm), [`NuExt.Minimal.Mvvm.Wpf`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.Wpf), or [`NuExt.Minimal.Mvvm.MahApps.Metro`](https://www.nuget.org/packages/NuExt.Minimal.Mvvm.MahApps.Metro). You can add them via NuGet as well:
 
 For the base MVVM framework:
 ```sh
 dotnet add package NuExt.Minimal.Mvvm
 ```
 
-For Windows-specific extensions:
+For Wpf-specific extensions:
 ```sh
-dotnet add package NuExt.Minimal.Mvvm.Windows
+dotnet add package NuExt.Minimal.Mvvm.Wpf
 ```
 
 For MahApps.Metro integration:
@@ -141,12 +142,43 @@ partial class PersonModel
 }
 ```
 
-This example demonstrates how the source generator automatically creates properties with notification changes for fields and methods marked with the `[Notify]` attribute, thereby reducing boilerplate code.
+#### UseCommandManagerAttribute
+
+When applied to a command field or method, enables automatic `CanExecute` reevaluation for the generated command property by subscribing to the WPF `CommandManager.RequerySuggested` event. This attribute is used together with `[Notify]` for commands that should react to global UI state changes.
+
+```csharp
+using Minimal.Mvvm;
+
+public partial class MyViewModel : ViewModelBase
+{
+    [Notify, UseCommandManager]
+    private IRelayCommand? _saveCommand;
+}
+```
+The source generator creates the command property and automatically adds/removes the subscription:
+```csharp
+public IRelayCommand? SaveCommand
+{
+    get => _saveCommand;
+    set
+    {
+        if (SetProperty(ref _saveCommand, value, out var oldValue))
+        {
+            RequerySuggestedEventManager.RemoveHandler(oldValue);
+            RequerySuggestedEventManager.AddHandler(value);
+        }
+    }
+}
+```
+
+Now `SaveCommand.CanExecute` will be reevaluated whenever the WPF command manager detects a UI state change (e.g., focus, keyboard, window activation). No manual event wiring is required.
+
+These examples demonstrate how the source generator automatically creates properties with notification changes for fields and methods marked with the `[Notify]` attribute, thereby reducing boilerplate code.
 
 ### Contributing
 
-Contributions are welcome! Feel free to submit issues, fork the repository, and send pull requests. Your feedback and suggestions for improvement are highly appreciated.
+Issues and PRs are welcome. Keep changes minimal and performance-conscious.
 
 ### License
 
-Licensed under the MIT License. See the LICENSE file for details.
+MIT. See LICENSE.

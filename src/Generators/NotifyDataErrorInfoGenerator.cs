@@ -14,7 +14,7 @@ namespace Minimal.Mvvm.SourceGenerator
 
     internal struct NotifyDataErrorInfoGenerator
     {
-        internal const string NotifyDataErrorInfoAttributeFullyQualifiedName = "Minimal.Mvvm.NotifyDataErrorInfoAttribute";
+        internal const string NotifyDataErrorInfoAttributeFullyQualifiedMetadataName = "Minimal.Mvvm.NotifyDataErrorInfoAttribute";
 
         #region Pipeline
 

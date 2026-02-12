@@ -13,36 +13,112 @@ namespace Minimal.Mvvm.SourceGenerator
             if (methodDeclarationSyntax is not
                 {
                     Parent: ClassDeclarationSyntax,
-                    ParameterList.Parameters.Count: <= 1,
+                    ParameterList.Parameters.Count: <= 2,
                 })
             {
                 return false;
             }
-            return methodDeclarationSyntax.ReturnType switch
+
+            bool hasValidReturnType;
+            bool returnsVoid = false;
+            switch (methodDeclarationSyntax.ReturnType)
             {
-                IdentifierNameSyntax identifierNameSyntax => identifierNameSyntax.Identifier is
+                case IdentifierNameSyntax identifierNameSyntax:
+                    hasValidReturnType = identifierNameSyntax.Identifier is { ValueText: "Task" };
+                    break;
+                case PredefinedTypeSyntax predefinedTypeSyntax:
+                    returnsVoid = predefinedTypeSyntax.Keyword.IsKind(SyntaxKind.VoidKeyword);
+                    hasValidReturnType = returnsVoid;
+                    break;
+                case QualifiedNameSyntax qualifiedNameSyntax:
+                    hasValidReturnType = RemoveGlobalAlias(qualifiedNameSyntax.ToString()) == "System.Threading.Tasks.Task";
+                    break;
+                default:
+                    hasValidReturnType = false;
+                    break;
+            }
+
+            if (!hasValidReturnType)
+            {
+                return false;
+            }
+
+            var parameters = methodDeclarationSyntax.ParameterList.Parameters;
+
+            if (returnsVoid)
+            {
+                return parameters.Count <= 1;
+            }
+
+            //is async here
+
+            //Task MethodAsync([...,] CancellationToken ct)
+            if (parameters is { Count: > 0 and <= 2 } && parameters[parameters.Count - 1] is { Type: { } typeNode })
+            {
+                switch (typeNode)
                 {
-                    ValueText: "Task"
-                },
-                PredefinedTypeSyntax predefinedTypeSyntax => predefinedTypeSyntax.Keyword.IsKind(SyntaxKind.VoidKeyword),
-                QualifiedNameSyntax qualifiedNameSyntax => qualifiedNameSyntax.ToString() == "global::System.Threading.Tasks.Task" || qualifiedNameSyntax.ToString() == "System.Threading.Tasks.Task",
-                _ => false,
-            };
+                    case QualifiedNameSyntax { Right: IdentifierNameSyntax identifierNameNode }:
+                        if (identifierNameNode.Identifier is { ValueText: "CancellationToken" })
+                        {
+                            return true;
+                        }
+                        break;
+                    case IdentifierNameSyntax identifierNameSyntax:
+                        if (identifierNameSyntax.Identifier is { ValueText: "CancellationToken" })
+                        {
+                            return true;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+
+            return parameters.Count <= 1;
         }
 
         internal static bool IsValidMethod(Compilation compilation, IMethodSymbol methodSymbol)
         {
+            if (methodSymbol.Parameters.Length > 2)
+            {
+                return false;
+            }
+
             if (!IsValidContainingType(compilation, methodSymbol.ContainingType))
             {
                 return false;
             }
-            if (!methodSymbol.ReturnsVoid &&
-                methodSymbol.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) !=
+
+            if (methodSymbol.ReturnsVoid)
+            {
+                return methodSymbol.Parameters.Length <= 1;
+            }
+
+            if (methodSymbol.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) !=
                 "global::System.Threading.Tasks.Task")
             {
                 return false;
             }
+
+            if (HasCancellableParameter(methodSymbol))
+            {
+                return true;
+            }
+
             return methodSymbol.Parameters.Length <= 1;
+        }
+
+        private static bool HasCancellableParameter(IMethodSymbol methodSymbol)
+        {
+            if (methodSymbol.Parameters is { Length: > 0 and <= 2 } parameters && parameters[parameters.Length - 1] is { Type: { } symbolType })
+            {
+                if (symbolType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat) ==
+                    "global::System.Threading.CancellationToken")
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static void GenerateForMethod(scoped NotifyPropertyGeneratorContext ctx, IMethodSymbol methodSymbol, ref bool isFirst)
@@ -50,13 +126,14 @@ namespace Minimal.Mvvm.SourceGenerator
             var attributes = methodSymbol.GetAttributes();
 
             var notifyAttribute = GetNotifyAttribute(attributes)!;
-            var notifyAttributeData = GetNotifyAttributeData(notifyAttribute);
-
-            var customAttributes = GetCustomAttributes(attributes);
-            var customAttributeData = GetCustomAttributeData(customAttributes);
-
             var alsoNotifyAttributes = GetAlsoNotifyAttributes(attributes);
+            var customAttributes = GetCustomAttributes(attributes);
+            var useCommandManagerAttribute = GetUseCommandManagerAttribute(attributes);
+
+            var notifyAttributeData = GetNotifyAttributeData(notifyAttribute);
             var alsoNotifyAttributeData = GetAlsoNotifyAttributeData(alsoNotifyAttributes);
+            var customAttributeData = GetCustomAttributeData(customAttributes);
+            var useCommandManagerAttributeData = GetUseCommandManagerAttributeData(useCommandManagerAttribute);
 
             var propertyName = !string.IsNullOrWhiteSpace(notifyAttributeData.PropertyName) ? notifyAttributeData.PropertyName! : GetPropertyNameFromMethodName(methodSymbol.Name);
 
@@ -69,20 +146,25 @@ namespace Minimal.Mvvm.SourceGenerator
             string nullable = ctx.Compilation.Options.NullableContextOptions.HasFlag(NullableContextOptions.Annotations) ? "?" : "";
             var fullyQualifiedTypeName = $"{propertyType?.ToDisplayString(SymbolDisplayFormats.FullyQualifiedTypeName)}{nullable}";
 
-            var propCtx = new NotifyPropertyContext(notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData, methodSymbol.GetComment(), fullyQualifiedTypeName, propertyName, backingFieldName, true);
+            var propCtx = new NotifyPropertyContext(notifyAttributeData, callbackData, customAttributeData, alsoNotifyAttributeData,
+                useCommandManagerAttributeData, true, methodSymbol.GetComment(), fullyQualifiedTypeName, propertyName, backingFieldName, true);
 
             GenerateProperty(ctx, propCtx, ref isFirst);
         }
 
         private static INamedTypeSymbol? GetCommandTypeName(Compilation compilation, IMethodSymbol methodSymbol)
         {
+            bool isAsync = !methodSymbol.ReturnsVoid;
+            bool supportsCancellation = isAsync && HasCancellableParameter(methodSymbol);
+
             var parameters = methodSymbol.Parameters;
-            if (parameters.Length == 0)
+            if (parameters.Length == 0 
+                || (parameters.Length == 1 && supportsCancellation))
             {
-                return compilation.GetTypeByMetadataName(methodSymbol.ReturnsVoid ? "System.Windows.Input.ICommand" : "Minimal.Mvvm.IAsyncCommand");
+                return compilation.GetTypeByMetadataName(!isAsync ? "Minimal.Mvvm.IRelayCommand" : "Minimal.Mvvm.IAsyncCommand");
             }
 
-            var genericCommandType = compilation.GetTypeByMetadataName(methodSymbol.ReturnsVoid ? "Minimal.Mvvm.ICommand`1" : "Minimal.Mvvm.IAsyncCommand`1");
+            var genericCommandType = compilation.GetTypeByMetadataName(!isAsync ? "Minimal.Mvvm.IRelayCommand`1" : "Minimal.Mvvm.IAsyncCommand`1");
 
             if (genericCommandType != null)
             {
