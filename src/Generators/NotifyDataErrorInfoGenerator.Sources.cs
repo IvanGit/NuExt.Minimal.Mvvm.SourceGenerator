@@ -560,7 +560,6 @@ partial struct NotifyDataErrorInfoGenerator
             return validationErrors.TryGetValue(propertyName, out var errors) && errors.Count > 0;
         }
 
-
         /// <summary>
         /// Caches a non-null current <see cref="System.Threading.SynchronizationContext"/> for UI dispatching.
         /// </summary>
